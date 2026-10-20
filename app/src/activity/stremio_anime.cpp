@@ -148,7 +148,7 @@ StremioAnime::StremioAnime() {
     this->recycler->setGrow(1.0f);
     this->recycler->setScrollingIndicatorVisible(false);
     this->recycler->spanCount = 6;
-    this->recycler->estimatedRowHeight = 300;
+    this->recycler->estimatedRowHeight = 334;
     this->recycler->registerCell("Cell", FavCardCell::create);
     this->addView(this->recycler);
     this->recycler->showSkeleton();

@@ -10,6 +10,17 @@ public:
     inline static bool authorized = true;
     static std::string get(const std::string& url, const Header& headers, Timeout) {
         ++calls;
+        if (url.rfind("https://tmdb.elfhosted.com/",0) == 0) {
+            if (headers != Header{"Accept: application/json"}) throw std::runtime_error("public service must not receive credentials");
+            if (!authorized) throw std::runtime_error("public service unavailable");
+            if (url.find("/meta/movie/tt1375666.json") != std::string::npos)
+                return R"({"meta":{"id":"tmdb:27205","name":"A Origem","description":"Sinopse pública em português.","genres":["Ficção científica"],"videos":[{"id":"must-not-replace-playback"}]}})";
+            if (url.find("/meta/series/tt0898266.json") != std::string::npos)
+                return R"({"meta":{"name":"Big Bang: A Teoria","videos":[{"season":1,"episode":1,"name":"Piloto","overview":"Sinopse do piloto."},{"season":2,"episode":1,"name":"Outra temporada"}]}})";
+            if (url.find("/catalog/movie/tmdb.search/") != std::string::npos)
+                return R"({"metas":[{"id":"tmdb:27205","imdb_id":"tt1375666","name":"A Origem","year":2010},{"id":"tmdb:999","name":"Sem IMDb"}]})";
+            return R"({"metas":[]})";
+        }
         if (headers.empty() || headers[0] != "Authorization: Bearer fixture-token") throw std::runtime_error("bad auth");
         if (!authorized) return R"({"success":false})";
         if (url.find("/search/multi?") != std::string::npos)

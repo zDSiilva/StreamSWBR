@@ -39,23 +39,29 @@ Json cached(const std::string& key) {
     memory[key] = record;
     return record.value("data", Json::object());
 }
-Json fetch(const std::string& key, const std::string& path) {
-    auto token = stream_preferences::get().tmdbToken;
-    if (token.empty()) return Json::object();
+const std::string publicBase = "https://tmdb.elfhosted.com/%7B%22language%22%3A%22pt-BR%22%7D/";
+std::chrono::steady_clock::time_point nextPublicRequest{}, retryPublicAfter{};
+Json request(const std::string& key, const std::string& url, const HTTP::Header& headers) {
     Json hit = cached(key);
     if (!hit.is_null()) return hit;
     // Deduplicate cache misses and limit TMDB traffic independently of carousel loading.
     std::lock_guard<std::mutex> network(requestMutex);
     hit = cached(key);
     if (!hit.is_null()) return hit;
+    const bool isPublic = url.rfind(publicBase,0) == 0;
+    if (isPublic) {
+        if (std::chrono::steady_clock::now() < retryPublicAfter) return Json::object();
+        // Keep first-time carousel loading below 80 requests/minute per console.
+        std::this_thread::sleep_until(nextPublicRequest);
+        nextPublicRequest = std::chrono::steady_clock::now() + std::chrono::milliseconds(750);
+    }
     Json data = Json::object();
     try {
-        const std::string sep = path.find('?') == std::string::npos ? "?" : "&";
-        auto body = HTTP::get("https://api.themoviedb.org/3/" + path + sep + "language=pt-BR",
-            HTTP::Header{"Authorization: Bearer " + token, "Accept: application/json"}, HTTP::Timeout{4000});
+        auto body = HTTP::get(url, headers, HTTP::Timeout{6000});
         data = Json::parse(body);
         if (!data.is_object() || data.contains("success")) data = Json::object();
     } catch (...) { /* Metadata failure must never prevent playback. */ }
+    if (isPublic && data.empty()) retryPublicAfter = std::chrono::steady_clock::now() + std::chrono::seconds(30);
     Json record{{"until", int64_t(std::time(nullptr)) + (data.empty() ? 300 : 604800)}, {"data", data}};
     {
         std::lock_guard<std::mutex> lock(cacheMutex);
@@ -64,6 +70,21 @@ Json fetch(const std::string& key, const std::string& path) {
         try { std::ofstream out(root + "/" + key + ".json"); if (out) out << record.dump(); } catch (...) {}
     }
     return data;
+}
+Json fetch(const std::string& key, const std::string& path) {
+    auto token = stream_preferences::get().tmdbToken;
+    if (token.empty()) return Json::object();
+    const std::string sep = path.find('?') == std::string::npos ? "?" : "&";
+    return request(key, "https://api.themoviedb.org/3/" + path + sep + "language=pt-BR",
+        HTTP::Header{"Authorization: Bearer " + token, "Accept: application/json"});
+}
+std::string publicKey(const std::string& id, const std::string& type) { return "public-" + type + "-" + id; }
+Json publicMeta(const std::string& id, const std::string& type) {
+    if (!imdb(id) || (type != "movie" && type != "series")) return Json::object();
+    auto data = request(publicKey(id,type), publicBase + "meta/" + type + "/" + id + ".json",
+        HTTP::Header{"Accept: application/json"});
+    auto m = data.find("meta");
+    return m != data.end() && m->is_object() ? *m : Json::object();
 }
 Json find(const std::string& id, const std::string& type) {
     if (!imdb(id) || (type != "movie" && type != "series")) return Json::object();
@@ -111,7 +132,12 @@ void configure(const std::string& directory) {
     std::filesystem::create_directories(root, error);
 }
 std::string cachedTitle(const std::string& id, const std::string& type, const std::string& fallback) {
-    if (stream_preferences::get().tmdbToken.empty() || !imdb(id)) return fallback;
+    if (!imdb(id)) return fallback;
+    if (stream_preferences::get().tmdbToken.empty()) {
+        auto record = cached(publicKey(id,type));
+        if (!record.is_object() || !record.contains("meta") || !record["meta"].is_object()) return fallback;
+        auto n = name(record["meta"]); return n.empty() ? fallback : n;
+    }
     auto result = cached("find-" + id);
     if (result.is_null()) return fallback;
     auto i = result.find(type == "movie" ? "movie_results" : "tv_results");
@@ -119,11 +145,11 @@ std::string cachedTitle(const std::string& id, const std::string& type, const st
     auto n = name((*i)[0]); return n.empty() ? fallback : n;
 }
 void title(const std::string& id, const std::string& type, std::function<void(std::string)> callback) {
-    if (stream_preferences::get().tmdbToken.empty() || !imdb(id)) { callback(""); return; }
+    if (!imdb(id)) { callback(""); return; }
     auto hit = cachedTitle(id, type, "");
     if (!hit.empty()) { callback(hit); return; }
     if (!queue().push([id, type, callback]() {
-        auto n = name(find(id, type));
+        auto n = name(stream_preferences::get().tmdbToken.empty() ? publicMeta(id,type) : find(id, type));
         brls::sync([callback, n]() { callback(n); });
     })) callback("");
 }
@@ -145,6 +171,15 @@ void localizeDetail(Json& response) {
         }
     }
     const std::string id = text(meta, "id"), type = text(meta, "type");
+    if (stream_preferences::get().tmdbToken.empty()) {
+        auto translated = publicMeta(id,type);
+        auto n = name(translated); if (!n.empty()) meta["name"] = n;
+        auto overview = text(translated,"description");
+        meta["description"] = overview.empty() ? "Sinopse em português indisponível no momento. Tente novamente mais tarde." : overview;
+        if (translated.contains("genres") && translated["genres"].is_array()) meta["genres"] = translated["genres"];
+        // Playback IDs, video lists and stream addresses stay with the original addon.
+        return;
+    }
     auto found = find(id, type);
     if (!found.contains("id") || !found["id"].is_number_integer()) {
         meta["description"] = stream_preferences::get().tmdbToken.empty() ?
@@ -166,6 +201,18 @@ void localizeDetail(Json& response) {
 }
 void season(const std::string& id, int number, std::function<void(Json)> callback) {
     queue().push([id, number, callback]() {
+        if (stream_preferences::get().tmdbToken.empty()) {
+            auto show = publicMeta(id,"series");
+            Json result{{"episodes", Json::array()}};
+            if (show.contains("videos") && show["videos"].is_array()) for (const auto& video : show["videos"]) {
+                if (!video.is_object() || !video.contains("season") || !video["season"].is_number_integer() || video["season"].get<int>() != number) continue;
+                auto ep = video.find("episode");
+                if (ep == video.end() || !ep->is_number_integer()) continue;
+                result["episodes"].push_back({{"episode_number", *ep}, {"name", text(video,"name")},
+                    {"overview", text(video,"overview").empty() ? text(video,"description") : text(video,"overview")}});
+            }
+            brls::sync([callback,result]() { callback(result); }); return;
+        }
         auto show = find(id, "series");
         Json result = Json::object();
         if (number >= 0 && show.contains("id") && show["id"].is_number_integer())
@@ -183,6 +230,21 @@ void search(const std::string& query, std::function<void(Json)> callback) {
             else { encoded += '%'; encoded += "0123456789ABCDEF"[c >> 4]; encoded += "0123456789ABCDEF"[c & 15]; }
         }
         Json output{{"metas", Json::array()}};
+        if (stream_preferences::get().tmdbToken.empty()) {
+            for (const auto& type : {std::string("movie"),std::string("series")}) {
+                auto results = request("public-search-" + type + "-" + std::to_string(std::hash<std::string>{}(query)),
+                    publicBase + "catalog/" + type + "/tmdb.search/search=" + encoded + ".json", HTTP::Header{"Accept: application/json"});
+                if (results.contains("metas") && results["metas"].is_array()) for (auto item : results["metas"]) {
+                    if (!item.is_object()) continue;
+                    auto id = text(item,"imdb_id"); if (!imdb(id)) id = text(item,"id");
+                    if (!imdb(id)) continue;
+                    item["id"] = id; item["type"] = type;
+                    if (!item.contains("year") || !item["year"].is_string()) item["year"] = text(item,"releaseInfo").substr(0,4);
+                    output["metas"].push_back(item);
+                }
+            }
+            brls::sync([callback,output]() { callback(output); }); return;
+        }
         auto results = fetch("search-" + std::to_string(std::hash<std::string>{}(query)),
             "search/multi?include_adult=false&query=" + encoded);
         auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
@@ -209,6 +271,7 @@ void clearCache() {
     std::lock_guard<std::mutex> network(requestMutex);
     std::lock_guard<std::mutex> lock(cacheMutex);
     memory.clear();
+    retryPublicAfter = {}; nextPublicRequest = {};
     std::error_code error;
     for (std::filesystem::directory_iterator i(root, error), end; !error && i != end; i.increment(error))
         if (i->path().extension() == ".json") std::filesystem::remove(i->path(), error);

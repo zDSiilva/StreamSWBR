@@ -122,7 +122,7 @@ StremioSearch::StremioSearch(const std::string& query) {
     this->recycler->setGrow(1.0f);
     this->recycler->setScrollingIndicatorVisible(false);
     this->recycler->spanCount = 6;
-    this->recycler->estimatedRowHeight = 300;
+    this->recycler->estimatedRowHeight = 334;
     this->recycler->registerCell("Cell", FavCardCell::create);
     this->addView(this->recycler);
     this->recycler->showSkeleton();
@@ -136,7 +136,7 @@ StremioSearch::StremioSearch(const std::string& query) {
     brls::sync([this]() { brls::Application::giveFocus(this); });
 
     std::string q = urlEncode(query);
-    if (!stream_preferences::get().tmdbToken.empty()) {
+    {
         ASYNC_RETAIN
         portuguese_metadata::search(query, [ASYNC_TOKEN, q](nlohmann::json result) {
             ASYNC_RELEASE

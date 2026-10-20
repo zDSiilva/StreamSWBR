@@ -159,7 +159,7 @@ public:
         heading->setTextColor(stremio_theme::TEXT); addView(heading);
         auto* grid = new RecyclingGrid(); grid->setGrow(1); grid->spanCount = 6;
         this->grid = grid;
-        grid->estimatedRowHeight = 300; grid->estimatedRowSpace = 20;
+        grid->estimatedRowHeight = 334; grid->estimatedRowSpace = 20;
         grid->registerCell("Cell", FavCardCell::create); addView(grid);
         grid->setDataSource(new StremioSource(list));
         registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
@@ -518,18 +518,28 @@ void StremioHome::addTopBar() {
     heading->setFontSize(23); heading->setHeight(34); heading->setMarginTop(20);
     heading->setMarginBottom(10); heading->setMarginLeft(56); heading->setTextColor(stremio_theme::TEXT);
     this->boxHome->addView(heading);
-    auto* categoryScroll = new brls::HScrollingFrame(); categoryScroll->setHeight(62); categoryScroll->setShrink(0);
-    auto* categories = new brls::Box(); categories->setAxis(brls::Axis::ROW); categories->setHeight(56);
+    auto* categoryScroll = new brls::HScrollingFrame(); categoryScroll->setHeight(68); categoryScroll->setShrink(0);
+    auto* categories = new brls::Box(); categories->setAxis(brls::Axis::ROW); categories->setHeight(60);
     // HScrollingFrame aborts when padding is set on the frame itself.
     categories->setPadding(0, 50, 0, 50);
     const std::pair<const char*, const char*> links[] = {{"Filmes", "popular-movies"}, {"Séries", "popular-series"},
         {"Animes", "anime"}, {"Ação", "movie-Action"}, {"Comédia", "movie-Comedy"}, {"Terror", "movie-Horror"},
         {"Ficção científica", "movie-Sci-Fi"}, {"Documentários", "movie-Documentary"}};
+    const unsigned colors[][3] = {{51,110,171},{102,77,171},{45,129,140},{160,93,55},
+        {155,111,44},{133,65,102},{62,97,159},{48,127,115}};
+    size_t categoryIndex = 0;
     for (const auto& link : links) {
         auto* chip = new brls::Box(); chip->setAxis(brls::Axis::ROW); chip->setFocusable(true); chip->setShrink(0);
-        chip->setPadding(10, 22, 10, 22); chip->setCornerRadius(22); chip->setMarginRight(12);
-        chip->setBackgroundColor(nvgRGB(34, 55, 91)); chip->setHighlightCornerRadius(22);
+        chip->setHeight(56); chip->setAlignItems(brls::AlignItems::CENTER);
+        chip->setJustifyContent(brls::JustifyContent::CENTER);
+        chip->setPadding(0, 20, 0, 20); chip->setCornerRadius(18); chip->setMarginRight(12);
+        chip->setBackgroundColor(nvgRGB(27, 35, 61)); chip->setHighlightCornerRadius(18);
+        const auto& color = colors[categoryIndex++];
+        auto* accent = new brls::Rectangle(nvgRGB(color[0], color[1], color[2]));
+        accent->setDimensions(4,20); accent->setCornerRadius(2); accent->setMarginRight(10); accent->setShrink(0);
+        chip->addView(accent);
         auto* label = new brls::Label(); label->setText(link.first); label->setFontSize(20); label->setHeight(30);
+        label->setHorizontalAlign(brls::HorizontalAlign::CENTER); label->setVerticalAlign(brls::VerticalAlign::CENTER);
         label->setTextColor(stremio_theme::TEXT); label->setSingleLine(true); chip->addView(label);
         const std::string key = link.second;
         chip->registerClickAction([key](brls::View*) {
@@ -594,7 +604,7 @@ void StremioHome::addAnimeRow() {
     this->boxHome->addView(header);
 
     auto* rec = new HRecyclerFrame();
-    rec->setHeight(300);
+    rec->setHeight(334);
     rec->estimatedRowWidth = 175;
     rec->setPadding(0, 50, 0, 50);
     rec->registerCell("Cell", FavCardCell::create);
@@ -621,7 +631,7 @@ void StremioHome::addRow(const std::string& title, const std::string& url) {
     this->boxHome->addView(header);
 
     auto* rec = new HRecyclerFrame();
-    rec->setHeight(300);
+    rec->setHeight(334);
     rec->estimatedRowWidth = 175;
     rec->setPadding(0, 50, 0, 50);
     rec->registerCell("Cell", FavCardCell::create);
@@ -645,7 +655,7 @@ void StremioHome::addFavouritesRow() {
     this->boxHome->addView(this->favHeader);
 
     this->favRec = new HRecyclerFrame();
-    this->favRec->setHeight(300);
+    this->favRec->setHeight(334);
     this->favRec->estimatedRowWidth = 175;
     this->favRec->setPadding(0, 50, 0, 50);
     this->favRec->registerCell("Cell", FavCardCell::create);
@@ -698,7 +708,7 @@ void StremioHome::addContinueRow() {
     this->boxHome->addView(this->continueHeader);
 
     this->continueRec = new HRecyclerFrame();
-    this->continueRec->setHeight(300);
+    this->continueRec->setHeight(334);
     this->continueRec->estimatedRowWidth = 175;
     this->continueRec->setPadding(0, 50, 0, 50);
     this->continueRec->registerCell("Cell", FavCardCell::create);

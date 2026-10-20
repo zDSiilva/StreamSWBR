@@ -29,8 +29,16 @@ public:
         });
     }
     FavCardCell() {
-        // Long titles truncate with an ellipsis instead of marquee-scrolling
-        // on focus (the wrap-around showed two title fragments at once).
+        // Two constrained lines preserve more of the title without marquee fragments.
+        this->labelTitle->setFontSize(17);
+        this->labelTitle->setSingleLine(false);
+        this->labelTitle->setWidthPercentage(100);
+        this->labelTitle->setHeight(44);
+        this->labelTitle->setShrink(0);
+        this->labelTitle->setLineHeight(1.15f);
+        this->labelTitle->setMarginTop(10);
+        this->labelTitle->setHorizontalAlign(brls::HorizontalAlign::CENTER);
+        this->labelTitle->getParent()->setShrink(0);
         this->labelTitle->setAutoAnimate(false);
         this->registerAction("Biblioteca", brls::BUTTON_X, [this](brls::View*) {
             if (this->onToggleFav) this->onToggleFav();

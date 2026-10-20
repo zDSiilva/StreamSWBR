@@ -13,25 +13,22 @@ Edição baseada em Kirbosh/StreamFinEX, commit `4ea3cecb3afd91b3b7feff7595b4b74
 - Preferência de áudio em português, com alternativas em Configurações. Legendas em português quando disponíveis ou desativadas ao iniciar.
 - Integração com TMDB em pt-BR para nomes, sinopses, gêneros, busca e informações de episódios. Os IDs IMDb, URLs de vídeo e histórico são preservados.
 
-## Informações em português: configurar uma vez
+## Informações em português: automático
 
-A revisão visual 2 corrige o espaçamento dos acentos usando a fonte latina do Switch, separa títulos e descrições dos botões e destaca o filtro ativo com cor. A tela inicial ganhou atalhos horizontais de categorias. Em Configurações, a opção de informações em português agora abre um tutorial navegável com QR code para a página oficial do TMDB e o botão Inserir token.
+A revisão 4 consulta o serviço público [TMDB Addon / ElfHosted](https://tmdb.elfhosted.com/) em pt-BR. O usuário não precisa criar conta, hospedar servidor ou digitar token. O serviço recebe o IP e os identificadores/títulos consultados para responder às buscas. Nenhuma credencial pessoal é enviada a esse serviço.
 
-O TMDB exige uma credencial própria. O pacote não inclui credenciais.
+Foram verificadas consultas reais sem autenticação para A Origem, Big Bang: A Teoria e a busca por A Origem. Títulos, sinopses e episódios são armazenados em cache local; as consultas em segundo plano são limitadas a no máximo 80 por minuto por console, além dos limites do provedor. Se o serviço falhar, há uma pausa antes de novas tentativas e a navegação/reprodução continuam disponíveis.
 
-1. Na sua conta em https://www.themoviedb.org/settings/api , obtenha um **token de leitura da API** (API Read Access Token).
-2. No aplicativo, entre em **Configurações → Informações em português · TMDB** e informe somente o token, sem escrever `Bearer`.
-3. Reabra a tela inicial para carregar os títulos traduzidos. Em uma primeira abertura, as capas podem mostrar o título original enquanto a tradução é obtida em segundo plano.
+Nas primeiras aberturas, os nomes podem aparecer no idioma original enquanto os dados são carregados. Algumas obras ou episódios podem não ter tradução; nomes oficiais brasileiros podem ser iguais aos originais. Animes identificados apenas por Kitsu e artes das capas podem continuar no idioma original. A disponibilidade do serviço público é de responsabilidade de terceiros.
 
-Para evitar digitar um token longo no Switch, você também pode adicionar esta linha ao arquivo `/switch/streamfin-addon.txt` do cartão SD, mantendo o endereço do seu complemento nas outras linhas:
+Se já havia token pessoal salvo, ele continua sendo enviado somente à API oficial do TMDB. Para mudar, use Configurações → Informações em português → Usar automático. Se existir uma linha `tmdb_token=` em `/switch/streamfin-addon.txt`, remova-a para ela não ser importada de novo na próxima abertura. O pacote não inclui tokens ou chaves.
 
-```text
-tmdb_token=SEU_TOKEN_DE_LEITURA_DO_TMDB
-```
+## Ajustes visuais da revisão 4
 
-O token fica no cartão SD, em `config/StreamFin/preferences-pt.json`, e é enviado somente à API do TMDB por HTTPS. Não publique esse arquivo nem envie seu token em capturas de tela. Se usar o arquivo de importação, edite/remova a linha nele para evitar que ele sobrescreva uma mudança feita na interface.
-
-Nem todo título tem tradução cadastrada. Nomes oficiais brasileiros podem ser iguais aos originais. Quando não houver sinopse em português, o aplicativo avisa; não inventa uma tradução. Animes identificados apenas por Kitsu ainda podem conservar o nome original, pois esta integração usa o vínculo com IMDb. As artes das capas não são traduzidas por esta edição.
+- Títulos dos cartões em duas linhas, fonte 17 e margem de 10 abaixo da capa; cartões mais altos preservam o tamanho dos pôsteres. Nomes muito longos ainda podem ser abreviados.
+- Estrela dourada com fundo escuro no lugar da bolinha da biblioteca.
+- Categorias com conteúdo centralizado horizontal e verticalmente, fundo discreto, detalhes coloridos e o destaque de foco já existente.
+- A correção de inicialização da revisão 3 está preservada: o espaçamento fica no conteúdo, nunca no HScrollingFrame.
 
 ## Gerar o arquivo para Switch
 
@@ -53,6 +50,6 @@ Um servidor marcado como preferido não garante disponibilidade, qualidade ou au
 
 ## Verificações
 
-Testes C++ cobrem classificação das fontes, busca sem distinção de acentos, persistência das preferências, títulos/sinopses, episódios, busca em português, preservação de IDs, cache e falha de metadados. Os testes de rede usam respostas simuladas; uma credencial real do TMDB e o console são necessários para validar o funcionamento completo.
+Testes C++ cobrem classificação das fontes, busca sem distinção de acentos, persistência das preferências, títulos/sinopses, episódios, busca em português, preservação de IDs, cache e falha de metadados. Os testes de rede usam respostas simuladas; as consultas reais ao serviço público foram verificadas no computador; a confirmação visual e de reprodução da revisão 4 depende do teste no console.
 
 Dados: TMDB — https://www.themoviedb.org . This product uses the TMDB API but is not endorsed or certified by TMDB.
