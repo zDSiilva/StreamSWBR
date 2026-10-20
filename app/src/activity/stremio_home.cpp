@@ -519,8 +519,9 @@ void StremioHome::addTopBar() {
     heading->setMarginBottom(10); heading->setMarginLeft(56); heading->setTextColor(stremio_theme::TEXT);
     this->boxHome->addView(heading);
     auto* categoryScroll = new brls::HScrollingFrame(); categoryScroll->setHeight(62); categoryScroll->setShrink(0);
-    categoryScroll->setPadding(0, 50, 0, 50);
     auto* categories = new brls::Box(); categories->setAxis(brls::Axis::ROW); categories->setHeight(56);
+    // HScrollingFrame aborts when padding is set on the frame itself.
+    categories->setPadding(0, 50, 0, 50);
     const std::pair<const char*, const char*> links[] = {{"Filmes", "popular-movies"}, {"Séries", "popular-series"},
         {"Animes", "anime"}, {"Ação", "movie-Action"}, {"Comédia", "movie-Comedy"}, {"Terror", "movie-Horror"},
         {"Ficção científica", "movie-Sci-Fi"}, {"Documentários", "movie-Documentary"}};
