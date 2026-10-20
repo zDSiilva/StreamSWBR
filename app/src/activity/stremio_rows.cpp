@@ -141,11 +141,15 @@ public:
         this->name = new brls::Label();
         this->name->setFontSize(22);
         this->name->setIsWrapping(true);
-        this->name->setMarginBottom(6);
+        this->name->setMinHeight(30);
+        this->name->setMarginBottom(8);
+        this->name->setShrink(0);
         this->addView(this->name);
 
         this->state = new brls::Label();
         this->state->setFontSize(18);
+        this->state->setHeight(26);
+        this->state->setShrink(0);
         this->addView(this->state);
 
         this->registerAction("Mover para cima", brls::BUTTON_Y, [this](brls::View*) {
@@ -229,6 +233,7 @@ StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
 
     auto* footer = new brls::Box(); footer->setAxis(brls::Axis::ROW); footer->setMarginTop(14);
     auto* saveButton = new brls::Button(); saveButton->setText("Salvar e voltar");
+    saveButton->setBackgroundColor(nvgRGB(105, 64, 195));
     saveButton->registerClickAction([this](brls::View*) {
         if (this->dirty) {
             rowcfg::save(this->rows);
@@ -238,6 +243,7 @@ StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
     });
     footer->addView(saveButton);
     auto* resetButton = new brls::Button(); resetButton->setText("Restaurar padrão"); resetButton->setMarginLeft(16);
+    resetButton->setBackgroundColor(nvgRGB(40, 92, 154));
     resetButton->registerClickAction([this](brls::View*) {
         auto* dialog = new brls::Dialog("Restaurar a ordem e as categorias padrão? A mudança será salva ao sair desta tela.");
         dialog->addButton("Cancelar", []() {});

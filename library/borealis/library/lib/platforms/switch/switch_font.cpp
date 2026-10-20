@@ -91,6 +91,13 @@ void SwitchFontLoader::loadFonts()
         Logger::error("switch: could not load Material icons font from resources");
 
     // Load Emoji
+    // Keep symbols available when the Portuguese UI uses the Latin font.
+    for (const auto& name : {FONT_CHINESE_SIMPLIFIED, FONT_CHINESE_SIMPLIFIED_EXT,
+             FONT_CHINESE_TRADITIONAL, FONT_KOREAN_REGULAR, FONT_SWITCH_ICONS, FONT_MATERIAL_ICONS}) {
+        const int fallback = Application::getFont(name);
+        const int latin = Application::getFont(FONT_REGULAR);
+        if (fallback >= 0 && latin >= 0 && fallback != latin) nvgAddFallbackFontId(vg, latin, fallback);
+    }
     if (!USER_EMOJI_PATH.empty())
     {
         if (access(USER_EMOJI_PATH.c_str(), F_OK) != -1)

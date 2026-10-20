@@ -148,7 +148,7 @@ void localizeDetail(Json& response) {
     auto found = find(id, type);
     if (!found.contains("id") || !found["id"].is_number_integer()) {
         meta["description"] = stream_preferences::get().tmdbToken.empty() ?
-            "Configure o TMDB em Configurações para carregar a sinopse em português." : "Sinopse em português indisponível.";
+            "Sinopse ainda não ativada. Abra Configurações → Informações em português e siga o tutorial do TMDB." : "Sinopse em português indisponível.";
         return;
     }
     auto prefix = std::string(type == "movie" ? "movie/" : "tv/") + std::to_string(found["id"].get<int>());

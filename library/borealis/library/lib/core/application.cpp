@@ -1285,7 +1285,11 @@ int Application::getFont(std::string fontName)
 int Application::getDefaultFont()
 {
 #ifdef __SWITCH__
-    static int regular = Application::getFont(FONT_CHINESE_SIMPLIFIED);
+    // The CJK shared font has full-width accented Latin glyphs. Portuguese
+    // must use the console's Latin font for consistent advances and kerning.
+    static int regular = Application::getFont(
+        (Application::getLocale() == LOCALE_PT || Application::getLocale() == LOCALE_PT_BR)
+            ? FONT_REGULAR : FONT_CHINESE_SIMPLIFIED);
 #else
     static int regular = Application::getFont(FONT_REGULAR);
 #endif

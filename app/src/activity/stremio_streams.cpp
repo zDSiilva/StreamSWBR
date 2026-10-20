@@ -106,6 +106,9 @@ public:
 
         this->name = new brls::Label();
         this->name->setFontSize(24);
+        this->name->setHeight(34);
+        this->name->setMarginBottom(7);
+        this->name->setShrink(0);
         this->name->setSingleLine(true);
         this->name->setAutoAnimate(false);
         this->name->setTextColor(stremio_theme::TEXT);
@@ -113,6 +116,8 @@ public:
 
         this->detail = new brls::Label();
         this->detail->setFontSize(18);
+        this->detail->setHeight(26);
+        this->detail->setShrink(0);
         this->detail->setSingleLine(true);
         this->detail->setTextColor(stremio_theme::TEXT_DIM);
         this->addView(this->detail);
@@ -196,13 +201,16 @@ StreamPicker::StreamPicker(
 
     auto* heading = new brls::Label();
     heading->setText(title); heading->setFontSize(28); heading->setSingleLine(true);
+    heading->setHeight(42); heading->setShrink(0);
     heading->setAutoAnimate(false); heading->setTextColor(stremio_theme::TEXT);
     heading->setMarginBottom(12); this->addView(heading);
     auto* filters = new brls::Box();
     this->filterButton = filters;
-    filters->setFocusable(true); filters->setPadding(10, 16, 10, 16); filters->setCornerRadius(10);
-    filters->setMarginBottom(16); filters->setBackgroundColor(nvgRGBA(255, 255, 255, 18));
+    filters->setFocusable(true); filters->setPadding(12, 20, 12, 20); filters->setCornerRadius(12);
+    filters->setShrink(0);
+    filters->setMarginBottom(20); filters->setBackgroundColor(nvgRGB(40, 92, 154));
     this->filterLabel = new brls::Label(); this->filterLabel->setFontSize(19);
+    this->filterLabel->setHeight(30); this->filterLabel->setSingleLine(true);
     this->filterLabel->setTextColor(stremio_theme::TEXT); filters->addView(this->filterLabel);
     auto changeFilter = [this](brls::View*) {
         this->filter = (this->filter + 1) % 3; this->refresh(); return true;
@@ -262,6 +270,7 @@ void StreamPicker::refresh() {
     });
     this->filterLabel->setText(std::string(labels[filter]) + " · " + std::to_string(filtered.size()) +
         " opções · Y filtrar · X detalhes");
+    this->filterButton->setBackgroundColor(filter == 0 ? nvgRGB(40, 92, 154) : nvgRGB(105, 64, 195));
     if (filtered.empty()) this->recycler->setEmpty(this->streams.empty() ?
         "Nenhum vídeo compatível. Verifique o complemento." : "Nenhuma opção neste filtro. Pressione Y para ver todas.");
     else this->recycler->setDataSource(new StreamSource(this->resumeKey, filtered));

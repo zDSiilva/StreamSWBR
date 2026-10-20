@@ -9,4 +9,5 @@ public:
 private:
     bool rowsChanged = false;
     void edit(int field, brls::Label* label);
+    void tmdbHelp(brls::Label* label);
 };

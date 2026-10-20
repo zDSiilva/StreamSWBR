@@ -15,6 +15,8 @@ Edição baseada em Kirbosh/StreamFinEX, commit `4ea3cecb3afd91b3b7feff7595b4b74
 
 ## Informações em português: configurar uma vez
 
+A revisão visual 2 corrige o espaçamento dos acentos usando a fonte latina do Switch, separa títulos e descrições dos botões e destaca o filtro ativo com cor. A tela inicial ganhou atalhos horizontais de categorias. Em Configurações, a opção de informações em português agora abre um tutorial navegável com QR code para a página oficial do TMDB e o botão Inserir token.
+
 O TMDB exige uma credencial própria. O pacote não inclui credenciais.
 
 1. Na sua conta em https://www.themoviedb.org/settings/api , obtenha um **token de leitura da API** (API Read Access Token).

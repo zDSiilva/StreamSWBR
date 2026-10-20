@@ -170,6 +170,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->labelDesc = new brls::Label();
     this->labelDesc->setText("Carregando…");
     this->labelDesc->setFontSize(21);
+    this->labelDesc->setLineHeight(1.4f);
     this->labelDesc->setTextColor(COL_DIM);
     this->labelDesc->setIsWrapping(true);
     this->labelDesc->setMarginTop(24);
@@ -210,6 +211,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
 
     this->labelCast = new brls::Label();
     this->labelCast->setFontSize(21);
+    this->labelCast->setLineHeight(1.35f);
     this->labelCast->setTextColor(COL_DIM);
     this->labelCast->setIsWrapping(true);
     this->labelCast->setMarginTop(8);
@@ -291,10 +293,10 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
         if (!seasons.empty())
             parts.push_back(seasons.size() == 1 ? "1 temporada" : fmt::format("{} temporadas", seasons.size()));
     }
-    if (!parts.empty()) this->labelMeta->setText(join(parts, "   ·   "));
+    if (!parts.empty()) this->labelMeta->setText(join(parts, " · "));
 
     if (!meta.genres.empty()) {
-        this->labelGenres->setText(join(meta.genres, "  ·  "));
+        this->labelGenres->setText(join(meta.genres, " · "));
         this->labelGenres->setVisibility(brls::Visibility::VISIBLE);
     }
 

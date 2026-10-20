@@ -158,6 +158,7 @@ public:
         heading->setText(title); heading->setFontSize(30); heading->setMarginBottom(18);
         heading->setTextColor(stremio_theme::TEXT); addView(heading);
         auto* grid = new RecyclingGrid(); grid->setGrow(1); grid->spanCount = 6;
+        this->grid = grid;
         grid->estimatedRowHeight = 300; grid->estimatedRowSpace = 20;
         grid->registerCell("Cell", FavCardCell::create); addView(grid);
         grid->setDataSource(new StremioSource(list));
@@ -166,10 +167,26 @@ public:
         });
         brls::sync([grid]() { brls::Application::giveFocus(grid); });
     }
+    CatalogGrid(const std::string& title, const std::string& url)
+        : CatalogGrid(title, std::vector<stremio::Meta>{}) {
+        this->grid->showSkeleton();
+        ASYNC_RETAIN
+        stremio::getJSON<stremio::MetaList>([ASYNC_TOKEN](stremio::MetaList result) {
+            ASYNC_RELEASE
+            if (result.metas.empty()) this->grid->setEmpty("Nenhum título disponível nesta categoria");
+            else this->grid->setDataSource(new StremioSource(result.metas));
+            brls::Application::giveFocus(this->grid);
+        }, [ASYNC_TOKEN](const std::string&) {
+            ASYNC_RELEASE
+            this->grid->setEmpty("Não foi possível carregar a categoria. Volte e tente novamente.");
+        }, url);
+    }
     void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style, brls::FrameContext* ctx) override {
         stremio_theme::drawOceanBackground(vg, x, y, width, height);
         brls::Box::draw(vg, x, y, width, height, style, ctx);
     }
+private:
+    RecyclingGrid* grid = nullptr;
 };
 void openCatalogGrid(const std::string& title, const std::vector<stremio::Meta>& list) {
     brls::Application::pushActivity(new brls::Activity(new CatalogGrid(title, list)));
@@ -496,6 +513,33 @@ void StremioHome::addTopBar() {
     bar->addView(btn);
 
     this->boxHome->addView(bar);
+
+    auto* heading = new brls::Label(); heading->setText("Explorar categorias");
+    heading->setFontSize(23); heading->setHeight(34); heading->setMarginTop(20);
+    heading->setMarginBottom(10); heading->setMarginLeft(56); heading->setTextColor(stremio_theme::TEXT);
+    this->boxHome->addView(heading);
+    auto* categoryScroll = new brls::HScrollingFrame(); categoryScroll->setHeight(62); categoryScroll->setShrink(0);
+    categoryScroll->setPadding(0, 50, 0, 50);
+    auto* categories = new brls::Box(); categories->setAxis(brls::Axis::ROW); categories->setHeight(56);
+    const std::pair<const char*, const char*> links[] = {{"Filmes", "popular-movies"}, {"Séries", "popular-series"},
+        {"Animes", "anime"}, {"Ação", "movie-Action"}, {"Comédia", "movie-Comedy"}, {"Terror", "movie-Horror"},
+        {"Ficção científica", "movie-Sci-Fi"}, {"Documentários", "movie-Documentary"}};
+    for (const auto& link : links) {
+        auto* chip = new brls::Box(); chip->setAxis(brls::Axis::ROW); chip->setFocusable(true); chip->setShrink(0);
+        chip->setPadding(10, 22, 10, 22); chip->setCornerRadius(22); chip->setMarginRight(12);
+        chip->setBackgroundColor(nvgRGB(34, 55, 91)); chip->setHighlightCornerRadius(22);
+        auto* label = new brls::Label(); label->setText(link.first); label->setFontSize(20); label->setHeight(30);
+        label->setTextColor(stremio_theme::TEXT); label->setSingleLine(true); chip->addView(label);
+        const std::string key = link.second;
+        chip->registerClickAction([key](brls::View*) {
+            if (key == "anime") brls::Application::pushActivity(new brls::Activity(new StremioAnime()));
+            else if (const auto* row = rowcfg::find(key))
+                brls::Application::pushActivity(new brls::Activity(new CatalogGrid(row->title, row->url)));
+            return true;
+        });
+        chip->addGestureRecognizer(new brls::TapGestureRecognizer(chip)); categories->addView(chip);
+    }
+    categoryScroll->setContentView(categories); this->boxHome->addView(categoryScroll);
 }
 
 // Catalog rows per the saved row config (editable via the top-bar logo).
