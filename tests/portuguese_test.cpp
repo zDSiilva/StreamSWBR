@@ -1,4 +1,5 @@
 #include "activity/stream_options.hpp"
+#include "activity/addon_profiles.hpp"
 #include "activity/stream_preferences.hpp"
 #include "api/portuguese_metadata.hpp"
 #include "api/http.hpp"
@@ -8,6 +9,36 @@
 #include <iostream>
 
 int main() {
+    using addon_profiles::State;
+    auto fresh=State::fromJson(nlohmann::json::object());
+    assert(fresh.entries.empty() && fresh.active.empty());
+    assert(addon_profiles::normalize(" https://example.org/a/manifest/json/ ")=="https://example.org/a");
+    assert(addon_profiles::normalize("https:///manifest.json").empty());
+    assert(addon_profiles::normalize("ftp://example.org").empty());
+    auto migrated=State::fromJson({{"url","https://example.org/old/manifest.json"}});
+    assert(migrated.entries.size()==1 && migrated.active=="https://example.org/old");
+    assert(migrated.add("Segundo","https://example.net/config/manifest.json"));
+    assert(migrated.entries.size()==2 && migrated.active=="https://example.net/config");
+    assert(migrated.select("https://example.org/old/manifest.json"));
+    assert(migrated.entries.size()==2);
+    assert(migrated.add("Renomeado","https://example.org/old/"));
+    assert(migrated.entries.size()==2 && migrated.entries[0].name=="Renomeado");
+    assert(!migrated.edit(migrated.active,"Duplicado","https://example.net/config"));
+    assert(migrated.edit(migrated.active,"Novo nome","https://example.org/new"));
+    assert(migrated.active=="https://example.org/new");
+    assert(migrated.importUrl("https://example.net/config/manifest.json"));
+    assert(migrated.active=="https://example.org/new"); // Import cannot undo selection.
+    auto restored=State::fromJson(migrated.json());
+    assert(restored.entries.size()==2 && restored.active==migrated.active);
+    assert(restored.remove("https://example.net/config"));
+    assert(!restored.importUrl("https://example.net/config")); // Deleted import stays deleted.
+    assert(restored.remove(restored.active));
+    assert(restored.active.empty() && restored.entries.empty());
+    assert(State::fromJson(restored.json()).active.empty());
+    State firstImport; assert(firstImport.importUrl("https://example.org/first"));
+    assert(firstImport.active=="https://example.org/first");
+    auto malformed=State::fromJson({{"url",nullptr},{"addons",nlohmann::json::array({42,{{"name",true},{"url","https://example.org"}}})}});
+    assert(malformed.entries.size()==1 && malformed.active.empty());
     using namespace stream_options;
     assert(preferred("FenixFlix 1080p · MALFOY", "Malfoy"));
     assert(!preferred("FenixHub", ""));

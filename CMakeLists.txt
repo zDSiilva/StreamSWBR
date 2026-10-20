@@ -53,7 +53,7 @@ include(${BOREALIS_LIBRARY}/cmake/toolchain.cmake)
 # project info
 project(StreamFin)
 set(VERSION_MAJOR "1")
-set(VERSION_MINOR "0")
+set(VERSION_MINOR "1")
 set(VERSION_ALTER "0")
 set(PROJECT_DISPLAY_NAME "Stream SWBR")
 set(PROJECT_TITLEID "010ff000ffff0003")

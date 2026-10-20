@@ -1,5 +1,6 @@
 #include "activity/stremio_settings.hpp"
 #include "activity/stremio_rows.hpp"
+#include "activity/stremio_addons.hpp"
 #include "activity/stream_preferences.hpp"
 #include "api/stremio.hpp"
 #include "api/portuguese_metadata.hpp"
@@ -62,18 +63,22 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     categories->registerClickAction([this](brls::View*) {
         brls::Application::pushActivity(new brls::Activity(new StremioRows([this]() { rowsChanged = true; }))); return true;
     });
-    const char* names[] = {"Informações em português · Automático", "Servidor preferido", "Complemento de vídeo", "Complemento de legendas"};
+    const char* names[] = {"Informações em português · Automático", "Servidor preferido", "Complementos de vídeo", "Complemento de legendas"};
     auto prefs = stream_preferences::get();
     const std::string values[] = {prefs.tmdbToken.empty() ? "Ativado · sem conta ou token · dados via TMDB Addon / ElfHosted" : "Credencial pessoal configurada · A para usar o modo automático",
         prefs.preferredServer.empty() ? "Nenhum · manter a ordem do complemento" : prefs.preferredServer,
-        stremio::STREAM_ADDON.empty() ? "Configurar endereço" : "Endereço configurado · A para editar",
+        stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Complemento ativo · A para gerenciar endereços salvos",
         stremio::SUBTITLES_ADDON.empty() ? "Opcional · configurar endereço" : "Endereço configurado · A para editar"};
     for (int field = 0; field < 4; ++field) {
         brls::Label* label = nullptr;
         auto* row = setting(content, names[field], values[field], &label);
         if (field == 0) row->setBackgroundColor(nvgRGB(33, 60, 99));
         row->registerClickAction([this, field, label](brls::View*) {
-            if (field == 0) tmdbHelp(label); else edit(field, label); return true;
+            if (field == 0) tmdbHelp(label);
+            else if (field == 2) brls::Application::pushActivity(new brls::Activity(new StremioAddons([label]() {
+                label->setText(stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Complemento ativo · A para gerenciar endereços salvos");
+            })));
+            else edit(field, label); return true;
         });
     }
     brls::Label* audioLabel = nullptr;
@@ -105,7 +110,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     attributionLogo->setMarginTop(18);
     attributionLogo->setImageFromSVGRes("icon/tmdb-approved.svg");
     content->addView(attributionLogo);
-    about->setText("Stream SWBR · 1.0.0 · por Diguit\nBase: StreamFinEX / StreamFin · créditos originais preservados\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
+    about->setText("Stream SWBR · 1.1.0 · por Diguit\nBase: StreamFinEX / StreamFin · créditos originais preservados\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
     about->setFontSize(15); about->setTextColor(stremio_theme::TEXT_DIM); about->setIsWrapping(true);
     about->setMarginTop(16); content->addView(about);
     registerAction("hints/back"_i18n, brls::BUTTON_B, [this, onRowsChanged](brls::View*) {
@@ -155,7 +160,7 @@ void StremioSettings::edit(int field, brls::Label* label) {
             if (url.empty() && (field == 2 || !value.empty())) {
                 brls::Application::notify("Endereço inválido. Use um endereço HTTP ou HTTPS."); return;
             }
-            if (field == 2) stremio::STREAM_ADDON = url; else stremio::SUBTITLES_ADDON = url;
+            if (field == 2) { stremio::saveAddon(AppConfig::instance().configDir(),url); } else stremio::SUBTITLES_ADDON = url;
             stremio::saveConfig(AppConfig::instance().configDir());
             label->setText(url.empty() ? "Complemento desativado" : "Endereço configurado · A para editar");
             brls::Application::notify("Complemento salvo");

@@ -8,9 +8,15 @@ Cliente homebrew com interface em português, navegação por controle e reprodu
 
 ## Download e instalação
 
-Baixe `StreamFin.nro` na página de [Releases](https://github.com/zDSiilva/streamfin26-switch/releases) e copie para `/switch/` no cartão SD. O arquivo mantém esse nome para compatibilidade com os atalhos existentes; o aplicativo aparece como **Stream SWBR** no hbmenu, com autor **Diguit**, versão **1.0.0** e ícone próprio.
+Baixe `Stream-SWBR-1.1.0.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
 
-Para atualizar, feche o aplicativo e substitua o arquivo anterior no mesmo caminho. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. O ícone de um atalho HOME previamente instalado é definido pelo próprio atalho.
+```text
+switch/
+└── Stream-SWBR-1.1.0/
+    └── Stream-SWBR-1.1.0.nro
+```
+
+No HB Menu, selecione Stream SWBR, versão 1.1.0. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. Atalhos HOME que apontam para um caminho antigo precisam manter esse caminho ou ser ajustados para o novo.
 
 ## Recursos
 
@@ -22,9 +28,15 @@ Para atualizar, feche o aplicativo e substitua o arquivo anterior no mesmo camin
 - Seleção de fontes organizada, servidor preferido, filtros e preferências de áudio/legendas.
 - `+` abre configurações na tela inicial; a explicação dos controles fica nas configurações.
 
-## Complemento de vídeo
+## Complementos de vídeo
 
-O aplicativo não inclui filmes ou séries. Configure seu complemento de streams HTTPS em Configurações ou no arquivo `/switch/streamfin-addon.txt`. Downloads por torrent não são suportados pelo player.
+O aplicativo não inclui filmes, séries ou endereços de vídeo predefinidos. Na primeira abertura, a tela de complementos aparece vazia. Você pode voltar e navegar pelos catálogos sem configurar vídeo.
+
+Em Configurações → Complementos de vídeo, adicione endereços HTTP/HTTPS compatíveis com Stremio, dê nomes e selecione qual usar. Até 20 complementos ficam salvos; apenas o ativo busca vídeos. É possível renomear, alterar endereço e excluir. O complemento configurado na versão anterior é preservado na lista.
+
+Você também pode importar um endereço pelo arquivo `/switch/streamfin-addon.txt`. O endereço é importado uma vez: o arquivo inalterado não desfaz uma seleção nem restaura um complemento excluído. Formatos `/manifest.json` e `/manifest/json` são reconhecidos. Isso não garante que qualquer serviço esteja disponível ou ofereça URLs HTTPS reproduzíveis; torrents não são suportados.
+
+Para testar como primeira instalação sem apagar dados, feche o app, renomeie temporariamente `config/StreamFin/` para `config/StreamFin-backup/` e `/switch/streamfin-addon.txt` para `/switch/streamfin-addon.txt.bak`, se existirem. Escolha nomes de backup ainda não utilizados. Depois abra a versão 1.1.0. Não é necessário excluir o repositório do GitHub.
 
 O serviço público de metadados é mantido por terceiros e pode ficar indisponível. Os nomes recebidos são armazenados no cartão SD para reduzir consultas; as primeiras cargas ainda dependem da rede. Tokens pessoais não são incluídos no código ou no aplicativo distribuído.
 

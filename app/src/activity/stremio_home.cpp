@@ -16,6 +16,7 @@
 #include "activity/stremio_anime.hpp"
 #include "activity/stremio_rows.hpp"
 #include "activity/stremio_settings.hpp"
+#include "activity/stremio_addons.hpp"
 #include "view/mpv_core.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/h_recycling.hpp"
@@ -44,20 +45,8 @@ void openSearch() {
 }
 
 // First-run / on-demand prompt for the stream addon URL (on-screen keyboard).
-void promptForAddon(const std::string& initial) {
-    brls::Application::getImeManager()->openForText(
-        [](const std::string& text) {
-            std::string url = stremio::normalizeAddonUrl(text);
-            if (url.empty()) {
-                brls::Application::notify("Nenhum complemento configurado — pressione − para configurar depois");
-                return;
-            }
-            stremio::saveAddon(AppConfig::instance().configDir(), url);
-            brls::Application::notify("Complemento salvo");
-        },
-        "Endereço do complemento de vídeo",
-        "Digite o endereço do complemento ou salve em switch/streamfin-addon.txt no cartão SD e reinicie o app",
-        1024, initial, 0);
+void promptForAddon(const std::string&) {
+    brls::Application::pushActivity(new brls::Activity(new StremioAddons()));
 }
 
 // Consistent, polished styling for every row title (Continue Watching,

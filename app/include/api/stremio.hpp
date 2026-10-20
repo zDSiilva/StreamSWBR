@@ -14,6 +14,7 @@
 #include <borealis/core/thread.hpp>
 #include "api/http.hpp"
 #include "api/portuguese_metadata.hpp"
+#include "activity/addon_profiles.hpp"
 
 #include <thread>
 #include <chrono>
@@ -71,6 +72,7 @@ inline const std::string KITSU = "https://anime-kitsu.strem.fun";
 // Set on first launch via the on-screen keyboard, persisted in the config
 // directory. Empty until the user provides one (catalog browsing still works).
 inline std::string STREAM_ADDON;
+inline addon_profiles::State VIDEO_ADDONS;
 
 // Optional poster provider: a URL template with an {imdbId} placeholder,
 // e.g. RPDB's rating-embedded posters. When set, all poster images load from
@@ -93,15 +95,7 @@ inline std::string trimJunk(std::string s) {
 
 // Normalize a pasted addon URL: trim whitespace/quotes, drop a trailing
 // "/manifest.json" and trailing slashes. Returns empty if it isn't http(s).
-inline std::string normalizeAddonUrl(std::string s) {
-    s = trimJunk(s);
-    const std::string suffix = "/manifest.json";
-    if (s.size() > suffix.size() && s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0)
-        s.resize(s.size() - suffix.size());
-    while (!s.empty() && s.back() == '/') s.pop_back();
-    if (s.rfind("http://", 0) != 0 && s.rfind("https://", 0) != 0) return std::string();
-    return s;
-}
+inline std::string normalizeAddonUrl(std::string s) { return addon_profiles::normalize(s); }
 
 // A poster template must be http(s) and contain the {imdbId} placeholder.
 inline std::string normalizePosterTemplate(std::string s) {
@@ -132,17 +126,20 @@ inline std::string posterUrl(const std::string& id, const std::string& fallback)
 
 inline std::string addonConfigPath(const std::string& configDir) { return configDir + "/stremio_addon.json"; }
 
-inline void saveConfig(const std::string& configDir) {
+inline bool saveConfig(const std::string& configDir) {
     ::mkdir(configDir.c_str(), 0777);
     try {
+        if (!STREAM_ADDON.empty()) VIDEO_ADDONS.add("",STREAM_ADDON,true);
+        else VIDEO_ADDONS.active.clear();
+        auto data=VIDEO_ADDONS.json(); data["poster"]=POSTER_TEMPLATE; data["subtitles"]=SUBTITLES_ADDON;
         std::ofstream out(addonConfigPath(configDir));
-        if (out.is_open())
-            out << nlohmann::json{
-                       {"url", STREAM_ADDON}, {"poster", POSTER_TEMPLATE}, {"subtitles", SUBTITLES_ADDON}}
-                       .dump(2);
+        if (!out) return false;
+        out << data.dump(2); out.close();
+        return !out.fail();
     } catch (const std::exception& e) {
         brls::Logger::warning("saveConfig: {}", e.what());
     }
+    return false;
 }
 
 inline void loadAddon(const std::string& configDir) {
@@ -151,7 +148,8 @@ inline void loadAddon(const std::string& configDir) {
         if (!in.is_open()) return;
         nlohmann::json j;
         in >> j;
-        STREAM_ADDON = normalizeAddonUrl(jstr(j, "url"));
+        VIDEO_ADDONS = addon_profiles::State::fromJson(j);
+        STREAM_ADDON = VIDEO_ADDONS.active;
         POSTER_TEMPLATE = normalizePosterTemplate(jstr(j, "poster"));
         SUBTITLES_ADDON = normalizeAddonUrl(jstr(j, "subtitles"));
     } catch (const std::exception& e) {
@@ -159,9 +157,15 @@ inline void loadAddon(const std::string& configDir) {
     }
 }
 
-inline void saveAddon(const std::string& configDir, const std::string& url) {
-    STREAM_ADDON = normalizeAddonUrl(url);
-    saveConfig(configDir);
+inline bool setVideoAddons(const std::string& configDir,const addon_profiles::State& next) {
+    auto previous=VIDEO_ADDONS; auto oldUrl=STREAM_ADDON;
+    VIDEO_ADDONS=next; STREAM_ADDON=next.active;
+    if (saveConfig(configDir)) return true;
+    VIDEO_ADDONS=previous; STREAM_ADDON=oldUrl; return false;
+}
+inline bool saveAddon(const std::string& configDir, const std::string& url) {
+    auto next=VIDEO_ADDONS;
+    return next.add("",url,true) && setVideoAddons(configDir,next);
 }
 
 // Easier setup than typing on the on-screen keyboard: the user drops a
@@ -169,8 +173,8 @@ inline void saveAddon(const std::string& configDir, const std::string& url) {
 //   https://your-stream-addon...      the stream addon base URL
 //   rpdb=YOUR_KEY                     rated posters via RatingPosterDB
 //   poster=https://...{imdbId}...     any custom poster provider template
-// Checked at every launch; when the file exists it is the source of truth
-// and is persisted, so editing it is also how you change settings later.
+// New video URLs are imported once; saved selections are preserved.
+// Poster and subtitle settings still follow this optional file.
 inline void importAddonFromFile(const std::string& configDir) {
     const std::string candidates[] = {
         "sdmc:/switch/streamfin-addon.txt",   // next to where the .nro lives
@@ -196,12 +200,10 @@ inline void importAddonFromFile(const std::string& configDir) {
             }
         }
 
-        // The file is the source of truth: apply all values (an absent
-        // rpdb/poster/subtitles line turns that feature off again). A missing
-        // addon line never wipes a working addon URL.
-        std::string effectiveUrl = url.empty() ? STREAM_ADDON : url;
-        if (effectiveUrl != STREAM_ADDON || poster != POSTER_TEMPLATE || subs != SUBTITLES_ADDON) {
-            STREAM_ADDON = effectiveUrl;
+        // An unchanged import file never overwrites a selection or restores a deleted entry.
+        const bool imported=VIDEO_ADDONS.importUrl(url);
+        if (imported || poster != POSTER_TEMPLATE || subs != SUBTITLES_ADDON) {
+            STREAM_ADDON = VIDEO_ADDONS.active;
             POSTER_TEMPLATE = poster;
             SUBTITLES_ADDON = subs;
             saveConfig(configDir);
@@ -584,8 +586,9 @@ inline void fetchStreams(const std::string& type, const std::string& id,
         for (const char* t : {"series", "anime", "movie"})
             if (t != type) types->push_back(t);
 
+    const auto addonBase = STREAM_ADDON;
     auto attempt = std::make_shared<std::function<void(size_t)>>();
-    *attempt = [types, then, error, id, attempt](size_t i) {
+    *attempt = [types, then, error, id, attempt, addonBase](size_t i) {
         if (i >= types->size()) {
             error("no streams found");
             return;
@@ -606,7 +609,7 @@ inline void fetchStreams(const std::string& type, const std::string& id,
                 else
                     error(e);
             },
-            STREAM_ADDON + "/stream/" + t + "/" + id + ".json");
+            addonBase + "/stream/" + t + "/" + id + ".json");
     };
     (*attempt)(0);
 }

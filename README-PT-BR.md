@@ -47,6 +47,12 @@ Se já havia token pessoal salvo, ele continua sendo enviado somente à API ofic
 - Instruções dos controles aparecem somente nas configurações. O atalho + permanece disponível na tela inicial.
 - Nome de exibição do NRO: Stream SWBR; autor da edição: Diguit; versão 1.0.0; créditos originais preservados. O arquivo continua StreamFin.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
 
+## Versão 1.1.0 — complementos salvos
+
+Adição, seleção, renomeação, alteração de endereço e exclusão de até 20 complementos. Instalações novas não incluem endereço de vídeo; instalações antigas preservam o endereço atual. Apenas o selecionado é utilizado, e excluir o ativo não seleciona outro automaticamente. Arquivos de importação inalterados não restauram endereços excluídos nem sobrescrevem a seleção. O arquivo stremio_addon.json mantém compatibilidade com o campo url anterior e inclui a lista addons.
+
+O fluxo inicial e o botão − abrem o gerenciador; pode-se voltar para navegar sem configurar vídeo. A versão reconhece finais manifest.json e manifest/json. O pacote usa switch/Stream-SWBR-1.1.0/Stream-SWBR-1.1.0.nro.
+
 ## Gerar o arquivo para Switch
 
 O workflow `.github/workflows/build-switch.yaml` executa os testes e compila `StreamFin.nro`. Ele roda ao enviar mudanças para `main` ou uma branch `ptbr/**`, e também permite execução manual.
