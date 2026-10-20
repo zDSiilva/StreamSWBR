@@ -45,13 +45,13 @@ Se já havia token pessoal salvo, ele continua sendo enviado somente à API ofic
 - Header fixo: logo à esquerda, subtítulo “Sua biblioteca de filmes e séries no Nintendo Switch”, configurações e busca à direita. O header é preservado ao reorganizar categorias.
 - Fileiras de catálogo mostram até 15 títulos e um cartão Ver todos. A grade aberta por Ver todos mantém a lista completa recebida do catálogo, sem o limite da prévia.
 - Instruções dos controles aparecem somente nas configurações. O atalho + permanece disponível na tela inicial.
-- Nome de exibição do NRO: Stream SWBR; autor da edição: Diguit; versão 1.0.0; créditos originais preservados. O arquivo continua StreamFin.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
+- Nome de exibição do NRO: Stream SWBR; autor da edição: Diguit; versão 1.0.0; créditos originais preservados. O pacote de distribuição usa Stream-SWBR.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
 
 ## Versão 1.1.0 — complementos salvos
 
 Adição, seleção, renomeação, alteração de endereço e exclusão de até 20 complementos. Instalações novas não incluem endereço de vídeo; instalações antigas preservam o endereço atual. Apenas o selecionado é utilizado, e excluir o ativo não seleciona outro automaticamente. Arquivos de importação inalterados não restauram endereços excluídos nem sobrescrevem a seleção. O arquivo stremio_addon.json mantém compatibilidade com o campo url anterior e inclui a lista addons.
 
-O fluxo inicial e o botão − abrem o gerenciador; pode-se voltar para navegar sem configurar vídeo. A versão reconhece finais manifest.json e manifest/json. O pacote usa switch/Stream-SWBR-1.1.0/Stream-SWBR-1.1.0.nro.
+O fluxo inicial e o botão − abrem o gerenciador; pode-se voltar para navegar sem configurar vídeo. A versão reconhece finais manifest.json e manifest/json. O pacote usa switch/Stream-SWBR/Stream-SWBR.nro.
 
 ## Gerar o arquivo para Switch
 
@@ -64,7 +64,7 @@ O workflow não publica uma release automaticamente. Uma cópia em branch separa
 ## Instalar e testar
 
 1. Guarde no computador uma cópia do `.nro` que você usa hoje.
-2. Com o aplicativo fechado, copie o novo `StreamFin.nro` para a pasta `/switch/` do cartão SD.
+2. Com o aplicativo fechado, copie o NRO como `Stream-SWBR.nro` para a pasta `/switch/Stream-SWBR/` do cartão SD.
 3. Confira Configurações, categorias, busca por nome brasileiro, detalhes e episódios.
 4. Escolha um vídeo, alterne os filtros com Y e confira os detalhes com X. Verifique o destaque de Malfoy sem excluir as outras fontes.
 5. Teste áudio, legendas, retorno à seleção de vídeos e retomada do histórico no console.

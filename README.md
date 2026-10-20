@@ -12,11 +12,13 @@ Baixe `Stream-SWBR-1.1.1.zip` em [Releases](https://github.com/zDSiilva/StreamSW
 
 ```text
 switch/
-└── Stream-SWBR-1.1.1/
-    └── Stream-SWBR-1.1.1.nro
+└── Stream-SWBR/
+    └── Stream-SWBR.nro
 ```
 
-No HB Menu, selecione Stream SWBR, versão 1.1.1. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. Atalhos HOME que apontam para um caminho antigo precisam manter esse caminho ou ser ajustados para o novo.
+Para atualizar, copie a pasta `switch` para o SD e substitua o arquivo existente. O nome e o caminho do NRO permanecem iguais entre versões.
+
+Se você instalou um pacote anterior com versão no nome da pasta, use a nova pasta `Stream-SWBR` e remova apenas a pasta antiga do aplicativo para evitar duplicatas. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. Atalhos HOME existentes precisam apontar para o novo caminho.
 
 ## Recursos
 
