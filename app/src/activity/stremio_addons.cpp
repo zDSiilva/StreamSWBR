@@ -18,6 +18,11 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     auto* scroll=new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(true);
     list=new brls::Box(); list->setAxis(brls::Axis::COLUMN); list->setPaddingRight(16);
     scroll->setContentView(list); addView(scroll);
+    auto* later=new brls::Button(); later->setText("Configurar depois"); later->setShrink(0);
+    later->setMarginTop(12);
+    later->registerClickAction([onClose](brls::View*) {
+        brls::Application::popActivity(); if (onClose) onClose(); return true;
+    }); addView(later);
     auto* hints=new brls::Label(); hints->setText("A  Opções do complemento     B  Voltar");
     hints->setFontSize(16); hints->setHeight(30); hints->setShrink(0); hints->setMarginTop(12);
     hints->setTextColor(stremio_theme::TEXT_DIM); addView(hints);
@@ -30,8 +35,16 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
 }
 void StremioAddons::rebuild() {
     list->clearViews(true);
+    addButton->setText(stremio::VIDEO_ADDONS.entries.empty() ? "Adicionar outro endereço" : "+ Adicionar complemento");
     if (stremio::VIDEO_ADDONS.entries.empty()) {
-        auto* empty=new brls::Label(); empty->setText("Nenhum endereço salvo.\nO aplicativo não inclui complemento de vídeo. Adicione um endereço fornecido por um serviço compatível com Stremio, como manifest.json.");
+        auto* useFenix=new brls::Button(); useFenix->setText("Usar FenixFlix");
+        useFenix->setShrink(0); useFenix->setMarginBottom(16); useFenix->setBackgroundColor(nvgRGB(28,79,74));
+        useFenix->registerClickAction([this](brls::View*) {
+            auto next=stremio::VIDEO_ADDONS;
+            if (next.add("FenixFlix","https://fenixflix.fenixhub.online/manifest/json",true)) commit(next);
+            return true;
+        }); list->addView(useFenix);
+        auto* empty=new brls::Label(); empty->setText("Escolha FenixFlix para configurar com um clique ou adicione outro endereço.\nFenixFlix é um serviço de terceiros. Nenhum complemento é ativado sem sua escolha.");
         empty->setWidthPercentage(100); empty->setSingleLine(false); empty->setFontSize(20); empty->setLineHeight(1.35f);
         empty->setTextColor(stremio_theme::TEXT_DIM); list->addView(empty); return;
     }
@@ -90,7 +103,7 @@ void StremioAddons::askUrl(addon_profiles::Entry entry) {
         auto url=stremio::normalizeAddonUrl(value);
         if (url.empty()) { brls::Application::notify("Endereço inválido. Use HTTP ou HTTPS."); return; }
         askName(entry,url);
-    },"Endereço do complemento","Cole o endereço do complemento ou seu manifest.json. Nenhum endereço vem incluído no app.",2048,entry.url,0);
+    },"Endereço do complemento","Cole o endereço do complemento ou seu manifest.json.",2048,entry.url,0);
 }
 void StremioAddons::askName(addon_profiles::Entry entry,const std::string& url) {
     ASYNC_RETAIN

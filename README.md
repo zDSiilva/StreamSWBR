@@ -8,7 +8,7 @@ Cliente homebrew com interface em português, navegação por controle e reprodu
 
 ## Download e instalação
 
-Baixe `Stream-SWBR-1.1.1.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
+Baixe `Stream-SWBR-1.1.2.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
 
 ```text
 switch/
@@ -32,7 +32,7 @@ Se você instalou um pacote anterior com versão no nome da pasta, use a nova pa
 
 ## Complementos de vídeo
 
-O aplicativo não inclui filmes, séries ou endereços de vídeo predefinidos. Na primeira abertura, a tela de complementos aparece vazia. Você pode voltar e navegar pelos catálogos sem configurar vídeo.
+O aplicativo não inclui filmes ou séries. Na primeira abertura, escolha **Usar FenixFlix**, **Adicionar outro endereço** ou **Configurar depois**. FenixFlix é um serviço de terceiros e só é ativado após sua escolha. Complementos já configurados são preservados.
 
 Em Configurações → Complementos de vídeo, adicione endereços HTTP/HTTPS compatíveis com Stremio, dê nomes e selecione qual usar. Até 20 complementos ficam salvos; apenas o ativo busca vídeos. É possível renomear, alterar endereço e excluir. O complemento configurado na versão anterior é preservado na lista.
 
