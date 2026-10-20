@@ -105,7 +105,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     attributionLogo->setMarginTop(18);
     attributionLogo->setImageFromSVGRes("icon/tmdb-approved.svg");
     content->addView(attributionLogo);
-    about->setText("StreamFinEX · Português · Revisão 5\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
+    about->setText("Stream SWBR · 1.0.0\nBase: StreamFinEX / StreamFin · adaptações por zDSiilva\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
     about->setFontSize(15); about->setTextColor(stremio_theme::TEXT_DIM); about->setIsWrapping(true);
     about->setMarginTop(16); content->addView(about);
     registerAction("hints/back"_i18n, brls::BUTTON_B, [this, onRowsChanged](brls::View*) {

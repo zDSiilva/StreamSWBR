@@ -79,11 +79,12 @@ public:
     explicit StremioSource(const std::vector<stremio::Meta>& r, const std::string& title = "", bool carousel = false)
         : list(r), title(title), carousel(carousel) {}
 
-    size_t getItemCount() override { return this->list.size() + (carousel ? 1 : 0); }
+    size_t visibleCount() const { return carousel ? std::min<size_t>(15, list.size()) : list.size(); }
+    size_t getItemCount() override { return visibleCount() + (carousel ? 1 : 0); }
 
     RecyclingGridItem* cellForRow(RecyclingView* recycler, size_t index) override {
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
-        if (index == this->list.size()) {
+        if (carousel && index == visibleCount()) {
             cell->staticTitle("Ver todos");
             cell->labelExt->setText(std::to_string(this->list.size()) + " títulos");
             cell->labelExt->setVisibility(brls::Visibility::VISIBLE);
@@ -133,7 +134,7 @@ public:
     }
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
-        if (carousel && index == this->list.size()) { openCatalogGrid(title, list); return; }
+        if (carousel && index == visibleCount()) { openCatalogGrid(title, list); return; }
         auto item = this->list.at(index);
         // Both movies and series open the detail screen (info + cast +
         // Watch/Episodes button).
@@ -455,8 +456,7 @@ bool StremioHome::parkFocus(brls::View* avoid) {
 }
 
 
-// Top bar: small Stremio logo on the left, a round search button on the
-// right. Lives inside the scrolled column, so it scrolls away with the rows.
+// Fixed Stream SWBR identity, with settings and search on the right.
 void StremioHome::openSettings() {
     brls::Application::pushActivity(new brls::Activity(new StremioSettings([this]() {
         brls::sync([this]() { brls::sync([this]() { this->rebuildRows(); }); });
@@ -464,68 +464,39 @@ void StremioHome::openSettings() {
 }
 
 void StremioHome::addTopBar() {
-    auto* bar = new brls::Box();
-    bar->setAxis(brls::Axis::ROW);
-    bar->setAlignItems(brls::AlignItems::CENTER);
-    bar->setMarginTop(8);
-    bar->setMarginLeft(50);
-    bar->setMarginRight(50);
-
-    auto* logoBtn = new brls::Box();
-    logoBtn->setFocusable(true);
-    logoBtn->setAxis(brls::Axis::ROW);
-    logoBtn->setAlignItems(brls::AlignItems::CENTER);
-    logoBtn->setPadding(10, 16, 10, 16);
-    logoBtn->setBackgroundColor(nvgRGBA(255, 255, 255, 20));
-    logoBtn->setCornerRadius(12);
-    logoBtn->setHideHighlightBackground(true);
-    logoBtn->setHighlightCornerRadius(14);
-    auto* logo = new SVGImage();
-    logo->setDimensions(24, 24);
-    logo->setImageFromSVGRes("icon/ico-settings-pt.svg");
-    logoBtn->addView(logo);
-    auto* settingsLabel = new brls::Label();
-    settingsLabel->setText("Configurações"); settingsLabel->setFontSize(20);
-    settingsLabel->setTextColor(stremio_theme::TEXT); settingsLabel->setMarginLeft(10);
-    logoBtn->addView(settingsLabel);
-    // The logo opens the home-row editor; changes rebuild the rows in place
-    // (deferred two frames so the editor pop fully finishes first).
-    logoBtn->registerClickAction([this](brls::View*) {
-        this->openSettings();
-        return true;
-    });
-    logoBtn->addGestureRecognizer(new brls::TapGestureRecognizer(logoBtn));
-    bar->addView(logoBtn);
-
-    auto* spacer = new brls::Box();
-    spacer->setGrow(1.0f);
-    bar->addView(spacer);
-
-    auto* btn = new brls::Box();
-    btn->setFocusable(true);
-    btn->setPadding(9, 9, 9, 9);
-    btn->setCornerRadius(21);
-    btn->setBackgroundColor(nvgRGBA(255, 255, 255, 22));
-    btn->setHideHighlightBackground(true);
-    btn->setHighlightCornerRadius(21);
-    auto* icon = new SVGImage();
-    icon->setDimensions(24, 24);
-    icon->setImageFromSVGRes("icon/ico-search-white.svg");
-    btn->addView(icon);
-    btn->registerClickAction([](brls::View*) {
-        openSearch();
-        return true;
-    });
-    btn->addGestureRecognizer(new brls::TapGestureRecognizer(btn));
-    bar->addView(btn);
-
-    this->boxHome->addView(bar);
-    auto* hints = new brls::Label();
-    hints->setText("X  Adicionar/remover da biblioteca     Y  Buscar     −  Endereço do complemento     +  Configurações");
-    hints->setFontSize(16); hints->setHeight(28); hints->setShrink(0);
-    hints->setMarginLeft(56); hints->setMarginTop(14);
-    hints->setTextColor(stremio_theme::TEXT_DIM); hints->setHorizontalAlign(brls::HorizontalAlign::LEFT);
-    this->boxHome->addView(hints);
+    if (!this->brandHeader) {
+        auto* bar = new brls::Box(); this->brandHeader = bar;
+        bar->setAxis(brls::Axis::ROW); bar->setAlignItems(brls::AlignItems::CENTER);
+        bar->setHeight(152); bar->setShrink(0); bar->setPadding(16,24,16,24);
+        bar->setMarginTop(12); bar->setMarginBottom(4); bar->setMarginLeft(24); bar->setMarginRight(24);
+        bar->setCornerRadius(20); bar->setBackgroundColor(nvgRGBA(19,29,49,242));
+        auto* identity = new brls::Box(); identity->setAxis(brls::Axis::COLUMN);
+        identity->setGrow(1); identity->setShrink(1); identity->setJustifyContent(brls::JustifyContent::CENTER);
+        auto* logo = new brls::Image(); logo->setDimensions(440,88); logo->setShrink(0);
+        logo->setScalingType(brls::ImageScalingType::FIT);
+        logo->setImageFromRes("icon/stream-swbr-horizontal.png"); identity->addView(logo);
+        auto* tagline = new brls::Label();
+        tagline->setText("Sua biblioteca de filmes e séries no Nintendo Switch");
+        tagline->setFontSize(16); tagline->setHeight(24); tagline->setShrink(0); tagline->setMarginTop(4);
+        tagline->setHorizontalAlign(brls::HorizontalAlign::LEFT); tagline->setSingleLine(true);
+        tagline->setAutoAnimate(false); tagline->setTextColor(nvgRGB(167,187,207)); identity->addView(tagline);
+        bar->addView(identity);
+        auto action = [bar](const std::string& resource, const std::function<void()>& callback) {
+            auto* button = new brls::Box(); button->setDimensions(52,52); button->setShrink(0);
+            button->setMarginLeft(12); button->setAxis(brls::Axis::ROW);
+            button->setAlignItems(brls::AlignItems::CENTER); button->setJustifyContent(brls::JustifyContent::CENTER);
+            button->setFocusable(true); button->setCornerRadius(16); button->setHighlightCornerRadius(18);
+            button->setBackgroundColor(nvgRGB(37,52,76)); button->setHideHighlightBackground(true);
+            auto* icon = new SVGImage(); icon->setDimensions(25,25); icon->setImageFromSVGRes(resource);
+            button->addView(icon);
+            button->registerClickAction([callback](brls::View*) { callback(); return true; });
+            button->addGestureRecognizer(new brls::TapGestureRecognizer(button)); bar->addView(button);
+        };
+        action("icon/ico-settings-pt.svg", [this]() { this->openSettings(); });
+        action("icon/ico-search-white.svg", []() { openSearch(); });
+        // The header belongs to the root, so it stays visible and is not rebuilt with catalog rows.
+        this->addView(bar,0);
+    }
 
     auto* heading = new brls::Label(); heading->setText("Explorar categorias");
     heading->setFontSize(23); heading->setHeight(34); heading->setMarginTop(20);

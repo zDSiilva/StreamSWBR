@@ -1,4 +1,4 @@
-# StreamFinEX em português
+# Stream SWBR — detalhes da edição em português
 
 Edição baseada em Kirbosh/StreamFinEX, commit `4ea3cecb3afd91b3b7feff7595b4b74a6e883b4a`, com licença Apache 2.0 e créditos originais preservados.
 
@@ -38,6 +38,14 @@ Se já havia token pessoal salvo, ele continua sendo enviado somente à API ofic
 - Detalhes com coluna de informações rolável, título menor, metadados discretos, cabeçalho Sinopse e margens entre as seções.
 - Tradução em lote dos catálogos públicos popular/em alta (até 20 nomes por consulta), associada por IMDb sem trocar os itens da biblioteca. Os nomes são guardados separadamente por 30 dias; detalhes e episódios mantêm o cache existente. Títulos fora desses lotes continuam sendo consultados individualmente em segundo plano.
 - Testes verificam associação por links IMDb válidos, bloqueio de associação por domínio parecido, cache do lote, retorno imediato dos nomes já armazenados e preservação de IDs. O novo layout requer confirmação no Switch.
+
+## Stream SWBR 1.0.0 — identidade e navegação
+
+- Logo horizontal fornecida pelo usuário, editada com fundo transparente, sem slogan ou bandeira no R, com SWBR em degradê verde; símbolo também aplicado ao ícone do hbmenu.
+- Header fixo: logo à esquerda, subtítulo “Sua biblioteca de filmes e séries no Nintendo Switch”, configurações e busca à direita. O header é preservado ao reorganizar categorias.
+- Fileiras de catálogo mostram até 15 títulos e um cartão Ver todos. A grade aberta por Ver todos mantém a lista completa recebida do catálogo, sem o limite da prévia.
+- Instruções dos controles aparecem somente nas configurações. O atalho + permanece disponível na tela inicial.
+- Nome de exibição do NRO: Stream SWBR; versão 1.0.0; créditos originais preservados. O arquivo continua StreamFin.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
 
 ## Gerar o arquivo para Switch
 

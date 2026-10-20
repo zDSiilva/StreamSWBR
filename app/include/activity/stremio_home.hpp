@@ -38,6 +38,7 @@ private:
 
     brls::ScrollingFrame* homeScroll = nullptr;  // vertical scroll (reset on rebuild)
     brls::Box* boxHome = nullptr;          // column container inside the scroll
+    brls::Box* brandHeader = nullptr;       // fixed identity and actions, retained on row rebuild
     brls::Label* favHeader = nullptr;       // "Favourites" row title (hidden when empty)
     HRecyclerFrame* favRec = nullptr;       // favourites carousel
     brls::Label* continueHeader = nullptr;  // "Continue Watching" title (hidden when empty)

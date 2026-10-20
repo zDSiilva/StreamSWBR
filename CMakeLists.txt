@@ -52,11 +52,12 @@ include(${BOREALIS_LIBRARY}/cmake/toolchain.cmake)
 
 # project info
 project(StreamFin)
-set(VERSION_MAJOR "0")
-set(VERSION_MINOR "3")
-set(VERSION_ALTER "9")
+set(VERSION_MAJOR "1")
+set(VERSION_MINOR "0")
+set(VERSION_ALTER "0")
+set(PROJECT_DISPLAY_NAME "Stream SWBR")
 set(PROJECT_TITLEID "010ff000ffff0003")
-set(PROJECT_AUTHOR "Kirbosh")
+set(PROJECT_AUTHOR "zDSiilva / Kirbosh")
 set(PACKAGE_NAME "fun.dragonfly.switchfin")
 set(VITA_TITLEID "SWITCHFIN")
 set(PSN_TITLE_ID "SFIN00000")
@@ -266,7 +267,7 @@ elseif (PLATFORM_SWITCH)
         gen_dksh("${PROJECT_RESOURCES}/shaders")
     endif ()
     add_custom_target(${PROJECT_NAME}.nro DEPENDS ${PROJECT_NAME}
-        COMMAND ${NX_NACPTOOL_EXE} --create "${PROJECT_NAME}" "${PROJECT_AUTHOR}" "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_ALTER}" ${PROJECT_NAME}.nacp
+        COMMAND ${NX_NACPTOOL_EXE} --create "${PROJECT_DISPLAY_NAME}" "${PROJECT_AUTHOR}" "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_ALTER}" ${PROJECT_NAME}.nacp
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_RESOURCES} ${CMAKE_BINARY_DIR}/resources
         COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/resources/font/keymap*.ttf ${CMAKE_BINARY_DIR}/resources/font/*_fallback.ttf ${CMAKE_BINARY_DIR}/resources/font/switch_font.ttf
         COMMAND ${NX_ELF2NRO_EXE} ${PROJECT_NAME}.elf ${PROJECT_NAME}.nro --icon=${PROJECT_ICON} --nacp=${PROJECT_NAME}.nacp --romfsdir=${CMAKE_BINARY_DIR}/resources
