@@ -105,6 +105,8 @@ void SwitchFontLoader::loadFonts()
             brls::Logger::info("Load emoji font: {}", USER_EMOJI_PATH);
             this->loadFontFromFile("emoji", USER_EMOJI_PATH);
             nvgAddFallbackFontId(vg, Application::getFont(FONT_CHINESE_SIMPLIFIED), Application::getFont("emoji"));
+            if (Application::getFont(FONT_REGULAR) >= 0 && Application::getFont("emoji") >= 0)
+                nvgAddFallbackFontId(vg, Application::getFont(FONT_REGULAR), Application::getFont("emoji"));
         }
         else
         {
