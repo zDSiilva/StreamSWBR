@@ -45,7 +45,7 @@ Se já havia token pessoal salvo, ele continua sendo enviado somente à API ofic
 - Header fixo: logo à esquerda, subtítulo “Sua biblioteca de filmes e séries no Nintendo Switch”, configurações e busca à direita. O header é preservado ao reorganizar categorias.
 - Fileiras de catálogo mostram até 15 títulos e um cartão Ver todos. A grade aberta por Ver todos mantém a lista completa recebida do catálogo, sem o limite da prévia.
 - Instruções dos controles aparecem somente nas configurações. O atalho + permanece disponível na tela inicial.
-- Nome de exibição do NRO: Stream SWBR; versão 1.0.0; créditos originais preservados. O arquivo continua StreamFin.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
+- Nome de exibição do NRO: Stream SWBR; autor da edição: Diguit; versão 1.0.0; créditos originais preservados. O arquivo continua StreamFin.nro e a pasta de dados continua config/StreamFin para compatibilidade com instalações existentes.
 
 ## Gerar o arquivo para Switch
 

@@ -8,7 +8,7 @@ Cliente homebrew com interface em português, navegação por controle e reprodu
 
 ## Download e instalação
 
-Baixe `StreamFin.nro` na página de [Releases](https://github.com/zDSiilva/streamfin26-switch/releases) e copie para `/switch/` no cartão SD. O arquivo mantém esse nome para compatibilidade com os atalhos existentes; o aplicativo aparece como **Stream SWBR** no hbmenu.
+Baixe `StreamFin.nro` na página de [Releases](https://github.com/zDSiilva/streamfin26-switch/releases) e copie para `/switch/` no cartão SD. O arquivo mantém esse nome para compatibilidade com os atalhos existentes; o aplicativo aparece como **Stream SWBR** no hbmenu, com autor **Diguit**, versão **1.0.0** e ícone próprio.
 
 Para atualizar, feche o aplicativo e substitua o arquivo anterior no mesmo caminho. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. O ícone de um atalho HOME previamente instalado é definido pelo próprio atalho.
 
@@ -30,7 +30,7 @@ O serviço público de metadados é mantido por terceiros e pode ficar indispon�
 
 ## Créditos e licença
 
-Baseado em [Kirbosh/StreamFinEX](https://github.com/Kirbosh/StreamFinEX), derivado de [scamNscoot/StreamFin](https://github.com/scamNscoot/StreamFin) e [Switchfin](https://github.com/dragonflylee/switchfin). Identidade Stream SWBR e adaptações desta edição por zDSiilva. Créditos, avisos e licenças dos projetos originais e dependências são preservados.
+Baseado em [Kirbosh/StreamFinEX](https://github.com/Kirbosh/StreamFinEX), derivado de [scamNscoot/StreamFin](https://github.com/scamNscoot/StreamFin) e [Switchfin](https://github.com/dragonflylee/switchfin). Identidade Stream SWBR e adaptações desta edição por Diguit. Créditos, avisos e licenças dos projetos originais e dependências são preservados.
 
 Código sob [Apache License 2.0](LICENSE). Consulte [README-PT-BR.md](README-PT-BR.md) para detalhes das alterações e compilação.
 
