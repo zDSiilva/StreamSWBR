@@ -456,27 +456,27 @@ void StremioHome::addTopBar() {
     if (!this->brandHeader) {
         auto* bar = new brls::Box(); this->brandHeader = bar;
         bar->setAxis(brls::Axis::ROW); bar->setAlignItems(brls::AlignItems::CENTER);
-        bar->setHeight(152); bar->setShrink(0); bar->setPadding(16,24,16,24);
-        bar->setMarginTop(12); bar->setMarginBottom(4); bar->setMarginLeft(24); bar->setMarginRight(24);
-        bar->setCornerRadius(20); bar->setBackgroundColor(nvgRGBA(19,29,49,242));
+        bar->setHeight(96); bar->setShrink(0); bar->setPadding(10,24,10,24);
+        bar->setMarginTop(8); bar->setMarginBottom(4); bar->setMarginLeft(24); bar->setMarginRight(24);
+        bar->setCornerRadius(14); bar->setBackgroundColor(nvgRGBA(19,29,49,242));
         auto* identity = new brls::Box(); identity->setAxis(brls::Axis::COLUMN);
         identity->setGrow(1); identity->setShrink(1); identity->setJustifyContent(brls::JustifyContent::CENTER);
-        auto* logo = new brls::Image(); logo->setDimensions(440,88); logo->setShrink(0);
+        auto* logo = new brls::Image(); logo->setDimensions(240,48); logo->setShrink(0);
         logo->setScalingType(brls::ImageScalingType::FIT);
         logo->setImageFromRes("icon/stream-swbr-horizontal.png"); identity->addView(logo);
         auto* tagline = new brls::Label();
         tagline->setText("Sua biblioteca de filmes e séries no Nintendo Switch");
-        tagline->setFontSize(16); tagline->setHeight(24); tagline->setShrink(0); tagline->setMarginTop(4);
+        tagline->setFontSize(14); tagline->setHeight(20); tagline->setShrink(0); tagline->setMarginTop(2);
         tagline->setHorizontalAlign(brls::HorizontalAlign::LEFT); tagline->setSingleLine(true);
         tagline->setAutoAnimate(false); tagline->setTextColor(nvgRGB(167,187,207)); identity->addView(tagline);
         bar->addView(identity);
         auto action = [bar](const std::string& resource, const std::function<void()>& callback) {
-            auto* button = new brls::Box(); button->setDimensions(52,52); button->setShrink(0);
-            button->setMarginLeft(12); button->setAxis(brls::Axis::ROW);
+            auto* button = new brls::Box(); button->setDimensions(40,40); button->setShrink(0);
+            button->setMarginLeft(10); button->setAxis(brls::Axis::ROW);
             button->setAlignItems(brls::AlignItems::CENTER); button->setJustifyContent(brls::JustifyContent::CENTER);
-            button->setFocusable(true); button->setCornerRadius(16); button->setHighlightCornerRadius(18);
+            button->setFocusable(true); button->setCornerRadius(12); button->setHighlightCornerRadius(14);
             button->setBackgroundColor(nvgRGB(37,52,76)); button->setHideHighlightBackground(true);
-            auto* icon = new SVGImage(); icon->setDimensions(25,25); icon->setImageFromSVGRes(resource);
+            auto* icon = new SVGImage(); icon->setDimensions(21,21); icon->setImageFromSVGRes(resource);
             button->addView(icon);
             button->registerClickAction([callback](brls::View*) { callback(); return true; });
             button->addGestureRecognizer(new brls::TapGestureRecognizer(button)); bar->addView(button);

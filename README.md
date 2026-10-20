@@ -8,15 +8,15 @@ Cliente homebrew com interface em português, navegação por controle e reprodu
 
 ## Download e instalação
 
-Baixe `Stream-SWBR-1.1.0.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
+Baixe `Stream-SWBR-1.1.1.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
 
 ```text
 switch/
-└── Stream-SWBR-1.1.0/
-    └── Stream-SWBR-1.1.0.nro
+└── Stream-SWBR-1.1.1/
+    └── Stream-SWBR-1.1.1.nro
 ```
 
-No HB Menu, selecione Stream SWBR, versão 1.1.0. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. Atalhos HOME que apontam para um caminho antigo precisam manter esse caminho ou ser ajustados para o novo.
+No HB Menu, selecione Stream SWBR, versão 1.1.1. Biblioteca, histórico e preferências continuam em `config/StreamFin/`. Atalhos HOME que apontam para um caminho antigo precisam manter esse caminho ou ser ajustados para o novo.
 
 ## Recursos
 
@@ -35,8 +35,6 @@ O aplicativo não inclui filmes, séries ou endereços de vídeo predefinidos. N
 Em Configurações → Complementos de vídeo, adicione endereços HTTP/HTTPS compatíveis com Stremio, dê nomes e selecione qual usar. Até 20 complementos ficam salvos; apenas o ativo busca vídeos. É possível renomear, alterar endereço e excluir. O complemento configurado na versão anterior é preservado na lista.
 
 Você também pode importar um endereço pelo arquivo `/switch/streamfin-addon.txt`. O endereço é importado uma vez: o arquivo inalterado não desfaz uma seleção nem restaura um complemento excluído. Formatos `/manifest.json` e `/manifest/json` são reconhecidos. Isso não garante que qualquer serviço esteja disponível ou ofereça URLs HTTPS reproduzíveis; torrents não são suportados.
-
-Para testar como primeira instalação sem apagar dados, feche o app, renomeie temporariamente `config/StreamFin/` para `config/StreamFin-backup/` e `/switch/streamfin-addon.txt` para `/switch/streamfin-addon.txt.bak`, se existirem. Escolha nomes de backup ainda não utilizados. Depois abra a versão 1.1.0. Não é necessário excluir o repositório do GitHub.
 
 O serviço público de metadados é mantido por terceiros e pode ficar indisponível. Os nomes recebidos são armazenados no cartão SD para reduzir consultas; as primeiras cargas ainda dependem da rede. Tokens pessoais não são incluídos no código ou no aplicativo distribuído.
 

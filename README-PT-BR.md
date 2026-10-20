@@ -76,3 +76,7 @@ Um servidor marcado como preferido não garante disponibilidade, qualidade ou au
 Testes C++ cobrem classificação das fontes, busca sem distinção de acentos, persistência das preferências, títulos/sinopses, episódios, busca em português, preservação de IDs, cache e falha de metadados. Os testes de rede usam respostas simuladas; as consultas reais ao serviço público foram verificadas no computador; a confirmação visual e de reprodução da revisão 4 depende do teste no console.
 
 Dados: TMDB — https://www.themoviedb.org . This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+## Versão 1.1.1 — header compacto
+
+Logo reduzida de 440×88 para 240×48; header de 152 para 96 de altura; subtítulo e botões menores. Dados existentes em config/StreamFin são preservados.
