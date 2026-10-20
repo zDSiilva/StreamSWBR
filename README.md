@@ -8,7 +8,7 @@ Cliente homebrew com interface em português, navegação por controle e reprodu
 
 ## Download e instalação
 
-Baixe `Stream-SWBR-1.1.2.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
+Baixe `Stream-SWBR-1.1.1.zip` em [Releases](https://github.com/zDSiilva/StreamSWBR/releases), extraia e copie a pasta `switch` para a raiz do cartão SD.
 
 ```text
 switch/
