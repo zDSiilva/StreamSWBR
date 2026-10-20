@@ -26,7 +26,7 @@ const NVGcolor COL_DIM    = stremio_theme::TEXT_DIM;  // secondary text
 const NVGcolor COL_ACCENT = stremio_theme::ACCENT_HI; // light Stremio purple (meta line)
 
 // Fullscreen scrollable description: everything else stays still; the text
-// scrolls with up/down. Opened by the blue "See more" under the description.
+// scrolls with up/down. Opened by the blue "Ver mais" under the description.
 class DescriptionScreen : public brls::Box {
 public:
     DescriptionScreen(const std::string& title, const std::string& text) {
@@ -156,7 +156,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->btnWatch->setHighlightPadding(3);
     this->btnLabel = new brls::Label();
     // ▶ is in the Switch system font; ☰ is not (renders as a crossed box).
-    this->btnLabel->setText(item.type == "series" ? "▶  Episodes" : "▶  Watch");
+    this->btnLabel->setText(item.type == "series" ? "▶  Episódios" : "▶  Assistir");
     this->btnLabel->setFontSize(24);
     this->btnLabel->setTextColor(COL_TEXT);
     this->btnWatch->addView(this->btnLabel);
@@ -168,14 +168,14 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     btnRow->addView(this->btnWatch);
 
     this->labelDesc = new brls::Label();
-    this->labelDesc->setText("Loading…");
+    this->labelDesc->setText("Carregando…");
     this->labelDesc->setFontSize(21);
     this->labelDesc->setTextColor(COL_DIM);
     this->labelDesc->setIsWrapping(true);
     this->labelDesc->setMarginTop(24);
     info->addView(this->labelDesc);
 
-    // Blue "See more" pill — only shown when the description was truncated.
+    // Blue "Ver mais" pill — only shown when the description was truncated.
     this->btnMore = new brls::Box();
     this->btnMore->setFocusable(true);
     this->btnMore->setAxis(brls::Axis::ROW);
@@ -187,7 +187,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->btnMore->setHighlightCornerRadius(8);
     this->btnMore->setVisibility(brls::Visibility::GONE);
     auto* moreLbl = new brls::Label();
-    moreLbl->setText("See more");
+    moreLbl->setText("Ver mais");
     moreLbl->setFontSize(20);
     moreLbl->setTextColor(nvgRGB(96, 150, 255));  // link blue
     this->btnMore->addView(moreLbl);
@@ -201,7 +201,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     info->addView(this->btnMore);
 
     this->labelCastHead = new brls::Label();
-    this->labelCastHead->setText("Cast");
+    this->labelCastHead->setText("Elenco");
     this->labelCastHead->setFontSize(24);
     this->labelCastHead->setTextColor(COL_TEXT);
     this->labelCastHead->setMarginTop(26);
@@ -230,9 +230,9 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     });
 
     // X toggles library membership here too, matching the poster grids.
-    this->registerAction("Library", brls::BUTTON_X, [this](brls::View*) {
+    this->registerAction("Biblioteca", brls::BUTTON_X, [this](brls::View*) {
         bool nowFav = Favourites::instance().toggle(this->item);
-        brls::Application::notify(nowFav ? "Added to Library" : "Removed from Library");
+        brls::Application::notify(nowFav ? "Adicionado à biblioteca" : "Removido da biblioteca");
         return true;
     });
 
@@ -249,7 +249,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
         },
         [ASYNC_TOKEN](const std::string&) {
             ASYNC_RELEASE
-            this->labelDesc->setText("No details available.");
+            this->labelDesc->setText("Nenhuma informação disponível.");
         },
         metaBase + "/meta/" + item.type + "/" + item.id + ".json");
 }
@@ -276,7 +276,7 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
     // without refetching the meta, and the backdrop as episode-thumb fallback.
     this->videos = meta.videos;
     this->background = meta.background;
-    if (!this->videos.empty() && this->item.type != "movie") this->btnLabel->setText("▶  Episodes");
+    if (!this->videos.empty() && this->item.type != "movie") this->btnLabel->setText("▶  Episódios");
 
     // Year · runtime · ★ rating (· N seasons for series)
     std::vector<std::string> parts;
@@ -289,7 +289,7 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
         for (auto& v : meta.videos)
             if (v.season > 0) seasons.insert(v.season);
         if (!seasons.empty())
-            parts.push_back(seasons.size() == 1 ? "1 season" : fmt::format("{} seasons", seasons.size()));
+            parts.push_back(seasons.size() == 1 ? "1 temporada" : fmt::format("{} temporadas", seasons.size()));
     }
     if (!parts.empty()) this->labelMeta->setText(join(parts, "   ·   "));
 
@@ -299,8 +299,8 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
     }
 
     // Long descriptions overflowed off-screen (nothing on this screen
-    // scrolls). Clamp the inline text and reveal the rest behind "See more".
-    this->fullDesc = !meta.description.empty() ? meta.description : "No description available.";
+    // scrolls). Clamp the inline text and reveal the rest behind "Ver mais".
+    this->fullDesc = !meta.description.empty() ? meta.description : "Nenhuma sinopse disponível.";
     const size_t maxInline = 240;
     if (this->fullDesc.size() > maxInline) {
         std::string cut = this->fullDesc.substr(0, maxInline);
@@ -320,7 +320,7 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
     }
 
     if (!meta.director.empty()) {
-        this->labelDirector->setText("Directed by " + join(meta.director));
+        this->labelDirector->setText("Direção: " + join(meta.director));
         this->labelDirector->setVisibility(brls::Visibility::VISIBLE);
     }
 }
@@ -345,11 +345,11 @@ void StremioDetail::onAction() {
 void StremioDetail::openStreams() {
     if (this->fetching) return;  // ignore repeat presses while a request runs
     if (stremio::STREAM_ADDON.empty()) {
-        brls::Application::notify("Set your stream addon first (press − on the home screen)");
+        brls::Application::notify("Configure o complemento primeiro (pressione − na tela inicial)");
         return;
     }
     this->fetching = true;
-    brls::Application::notify("Finding streams…");
+    brls::Application::notify("Buscando vídeos…");
 
     std::string name = this->item.name;
     ASYNC_RETAIN
@@ -358,7 +358,7 @@ void StremioDetail::openStreams() {
             ASYNC_RELEASE
             this->fetching = false;
             if (r.streams.empty()) {
-                brls::Application::notify("No streams found");
+                brls::Application::notify("Nenhum vídeo encontrado");
                 return;
             }
             ResumeEntry key{usedType, this->item.id, this->item.name, this->item.poster};
@@ -367,6 +367,6 @@ void StremioDetail::openStreams() {
         [ASYNC_TOKEN](const std::string& e) {
             ASYNC_RELEASE
             this->fetching = false;
-            brls::Application::notify("Stream error: " + e);
+            brls::Application::notify("Erro ao buscar vídeos: " + e);
         });
 }

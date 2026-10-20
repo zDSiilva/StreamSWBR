@@ -10,15 +10,29 @@
 #include <borealis.hpp>
 #include "view/video_card.hpp"
 #include "api/stremio.hpp"
+#include "api/portuguese_metadata.hpp"
 
 // Poster card with X = toggle favourite. The closure is (re)set in cellForRow.
 class FavCardCell : public VideoCardCell {
 public:
+    void staticTitle(const std::string& name) {
+        ++titleTicket;
+        this->labelTitle->setText(name);
+    }
+    void bindTitle(const std::string& id, const std::string& type, const std::string& original, const std::string& suffix = "") {
+        const auto ticket = ++titleTicket;
+        this->labelTitle->setText(portuguese_metadata::cachedTitle(id, type, original) + suffix);
+        ASYNC_RETAIN
+        portuguese_metadata::title(id, type, [ASYNC_TOKEN, ticket, suffix](const std::string& name) {
+            ASYNC_RELEASE
+            if (ticket == titleTicket && !name.empty()) this->labelTitle->setText(name + suffix);
+        });
+    }
     FavCardCell() {
         // Long titles truncate with an ellipsis instead of marquee-scrolling
         // on focus (the wrap-around showed two title fragments at once).
         this->labelTitle->setAutoAnimate(false);
-        this->registerAction("Library", brls::BUTTON_X, [this](brls::View*) {
+        this->registerAction("Biblioteca", brls::BUTTON_X, [this](brls::View*) {
             if (this->onToggleFav) this->onToggleFav();
             return true;
         });
@@ -27,6 +41,8 @@ public:
     std::function<void()> onToggleFav;
 
     static RecyclingGridItem* create() { return new FavCardCell(); }
+private:
+    size_t titleTicket = 0;
 };
 
 // Persistent favourites (movies + series). Survives restarts.

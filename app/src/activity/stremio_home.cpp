@@ -15,6 +15,7 @@
 #include "activity/stremio_library.hpp"
 #include "activity/stremio_anime.hpp"
 #include "activity/stremio_rows.hpp"
+#include "activity/stremio_settings.hpp"
 #include "view/mpv_core.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/h_recycling.hpp"
@@ -39,7 +40,7 @@ void openSearch() {
             if (!text.empty())
                 brls::Application::pushActivity(new brls::Activity(new StremioSearch(text)));
         },
-        "Search movies & series", "", 64, "", 0);
+        "Buscar filmes e séries", "", 64, "", 0);
 }
 
 // First-run / on-demand prompt for the stream addon URL (on-screen keyboard).
@@ -48,14 +49,14 @@ void promptForAddon(const std::string& initial) {
         [](const std::string& text) {
             std::string url = stremio::normalizeAddonUrl(text);
             if (url.empty()) {
-                brls::Application::notify("No addon set — press − to set it later");
+                brls::Application::notify("Nenhum complemento configurado — pressione − para configurar depois");
                 return;
             }
             stremio::saveAddon(AppConfig::instance().configDir(), url);
-            brls::Application::notify("Stream addon saved");
+            brls::Application::notify("Complemento salvo");
         },
-        "Stream addon URL",
-        "Type your addon URL — or easier: put it in a text file at switch/streamfin-addon.txt on the SD card and relaunch",
+        "Endereço do complemento de vídeo",
+        "Digite o endereço do complemento ou salve em switch/streamfin-addon.txt no cartão SD e reinicie o app",
         1024, initial, 0);
 }
 
@@ -63,26 +64,41 @@ void promptForAddon(const std::string& initial) {
 // Favourites, and all catalog rows) — one place to tweak the look.
 void styleRowHeader(brls::Label* h, const std::string& text) {
     h->setText(text);
-    h->setFontSize(27);
+    h->setFontSize(29);
     h->setMarginTop(28);
-    h->setMarginBottom(12);
+    h->setMarginBottom(16);
     h->setMarginLeft(56);  // rows are edge-to-edge; keep titles at the old inset
     h->setTextColor(nvgRGB(240, 242, 248));  // soft white for clear hierarchy
 }
 
 // Data source: turns a list of Cinemeta metas into poster cards. Selecting a
 // movie opens the stream picker; selecting a series opens its episode list.
+void openCatalogGrid(const std::string& title, const std::vector<stremio::Meta>& list);
 class StremioSource : public RecyclingGridDataSource {
 public:
-    explicit StremioSource(const std::vector<stremio::Meta>& r) : list(std::move(r)) {}
+    explicit StremioSource(const std::vector<stremio::Meta>& r, const std::string& title = "", bool carousel = false)
+        : list(r), title(title), carousel(carousel) {}
 
-    size_t getItemCount() override { return this->list.size(); }
+    size_t getItemCount() override { return this->list.size() + (carousel ? 1 : 0); }
 
     RecyclingGridItem* cellForRow(RecyclingView* recycler, size_t index) override {
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
+        if (index == this->list.size()) {
+            cell->staticTitle("Ver todos");
+            cell->labelExt->setText(std::to_string(this->list.size()) + " títulos");
+            cell->labelExt->setVisibility(brls::Visibility::VISIBLE);
+            cell->labelRating->setVisibility(brls::Visibility::INVISIBLE);
+            cell->badgeFavorite->setVisibility(brls::Visibility::INVISIBLE);
+            cell->badgeTopRight->setVisibility(brls::Visibility::GONE);
+            cell->rectProgress->getParent()->setVisibility(brls::Visibility::GONE);
+            cell->onToggleFav = nullptr;
+            Image::cancel(cell->picture);
+            cell->picture->setImageFromRes("img/library-card.png");
+            return cell;
+        }
         auto item = this->list.at(index);
 
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -117,6 +133,7 @@ public:
     }
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
+        if (carousel && index == this->list.size()) { openCatalogGrid(title, list); return; }
         auto item = this->list.at(index);
         // Both movies and series open the detail screen (info + cast +
         // Watch/Episodes button).
@@ -127,9 +144,38 @@ public:
 
 private:
     std::vector<stremio::Meta> list;
+    std::string title;
+    bool carousel;
 };
 
-// Home "Library" row: the newest few saved titles plus a final "See all" card
+class CatalogGrid : public brls::Box {
+public:
+    CatalogGrid(const std::string& title, const std::vector<stremio::Meta>& list) {
+        setAxis(brls::Axis::COLUMN);
+        setDimensions(brls::Application::contentWidth, brls::Application::contentHeight);
+        setPadding(24, 48, 24, 48);
+        auto* heading = new brls::Label();
+        heading->setText(title); heading->setFontSize(30); heading->setMarginBottom(18);
+        heading->setTextColor(stremio_theme::TEXT); addView(heading);
+        auto* grid = new RecyclingGrid(); grid->setGrow(1); grid->spanCount = 6;
+        grid->estimatedRowHeight = 300; grid->estimatedRowSpace = 20;
+        grid->registerCell("Cell", FavCardCell::create); addView(grid);
+        grid->setDataSource(new StremioSource(list));
+        registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
+            brls::Application::popActivity(); return true;
+        });
+        brls::sync([grid]() { brls::Application::giveFocus(grid); });
+    }
+    void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style, brls::FrameContext* ctx) override {
+        stremio_theme::drawOceanBackground(vg, x, y, width, height);
+        brls::Box::draw(vg, x, y, width, height, style, ctx);
+    }
+};
+void openCatalogGrid(const std::string& title, const std::vector<stremio::Meta>& list) {
+    brls::Application::pushActivity(new brls::Activity(new CatalogGrid(title, list)));
+}
+
+// Home "Biblioteca" row: the newest few saved titles plus a final "Ver tudo" card
 // that opens the full library grid.
 class LibraryRowSource : public RecyclingGridDataSource {
 public:
@@ -144,8 +190,8 @@ public:
         cell->labelRating->setVisibility(brls::Visibility::INVISIBLE);
 
         if (index == this->list.size()) {  // the See-all card
-            cell->labelTitle->setText("Library");
-            cell->labelExt->setText(this->list.empty() ? "Nothing saved yet" : "See all");
+            cell->staticTitle("Biblioteca");
+            cell->labelExt->setText(this->list.empty() ? "Nenhum título salvo" : "Ver tudo");
             cell->labelExt->setVisibility(brls::Visibility::VISIBLE);
             cell->badgeFavorite->setVisibility(brls::Visibility::INVISIBLE);
             cell->onToggleFav = nullptr;
@@ -154,7 +200,7 @@ public:
         }
 
         auto item = this->list.at(index);
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -185,7 +231,7 @@ private:
     std::vector<stremio::Meta> list;
 };
 
-// Home "Anime" row: a few trending anime (Kitsu addon) plus a final "More"
+// Home "Anime" row: a few trending anime (Kitsu addon) plus a final "Mais"
 // card that opens the anime browse/search screen.
 class AnimeRowSource : public RecyclingGridDataSource {
 public:
@@ -200,8 +246,8 @@ public:
         cell->labelRating->setVisibility(brls::Visibility::INVISIBLE);
 
         if (index == this->list.size()) {  // the More card
-            cell->labelTitle->setText("Anime");
-            cell->labelExt->setText("Browse & search");
+            cell->staticTitle("Animes");
+            cell->labelExt->setText("Explorar e buscar");
             cell->labelExt->setVisibility(brls::Visibility::VISIBLE);
             cell->badgeFavorite->setVisibility(brls::Visibility::INVISIBLE);
             cell->onToggleFav = nullptr;
@@ -210,7 +256,7 @@ public:
         }
 
         auto item = this->list.at(index);
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -255,7 +301,15 @@ public:
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
         auto& e = this->list.at(index);
 
-        cell->labelTitle->setText(e.name);
+        auto separator = e.streamId.find(':');
+        std::string suffix;
+        if (separator != std::string::npos) {
+            auto episode = e.streamId.find(':', separator + 1);
+            if (episode != std::string::npos) suffix = " · T" + e.streamId.substr(separator + 1, episode - separator - 1) +
+                " E" + e.streamId.substr(episode + 1);
+        }
+        auto titleEnd = e.name.find(" · ");
+        cell->bindTitle(e.streamId.substr(0, separator), e.streamType, e.name.substr(0, titleEnd), suffix);
         cell->labelExt->setVisibility(brls::Visibility::GONE);
         cell->labelRating->setVisibility(brls::Visibility::INVISIBLE);
         cell->badgeFavorite->setVisibility(brls::Visibility::INVISIBLE);
@@ -265,7 +319,7 @@ public:
         cell->onToggleFav = [id = e.streamId]() {
             brls::sync([id]() {
                 ResumeTracker::instance().remove(id);
-                brls::Application::notify("Removed from Continue Watching");
+                brls::Application::notify("Removido de Continuar assistindo");
             });
         };
 
@@ -287,19 +341,19 @@ public:
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto e = this->list.at(index);
         if (stremio::STREAM_ADDON.empty()) {
-            brls::Application::notify("Set your stream addon first (press −)");
+            brls::Application::notify("Configure o complemento primeiro (pressione −)");
             return;
         }
-        brls::Application::notify("Finding streams…");
+        brls::Application::notify("Buscando vídeos…");
         stremio::fetchStreams(e.streamType, e.streamId,
             [e](stremio::StreamList r, std::string) {
                 if (r.streams.empty()) {
-                    brls::Application::notify("No streams found");
+                    brls::Application::notify("Nenhum vídeo encontrado");
                     return;
                 }
                 brls::Application::pushActivity(new brls::Activity(new StreamPicker(e.name, r.streams, e)));
             },
-            [](const std::string& err) { brls::Application::notify("Stream error: " + err); });
+            [](const std::string& err) { brls::Application::notify("Erro ao buscar vídeos: " + err); });
     }
 
     void clearData() override { this->list.clear(); }
@@ -347,14 +401,14 @@ StremioHome::StremioHome() {
     this->buildRows();
 
     // Y opens the on-screen keyboard to search Cinemeta.
-    this->registerAction("Search", brls::BUTTON_Y, [](brls::View*) {
+    this->registerAction("Buscar", brls::BUTTON_Y, [](brls::View*) {
         openSearch();
         return true;
     });
 
     // − sets/changes the stream addon URL; also prompts automatically on
     // first launch (deferred a frame so the window is up).
-    this->registerAction("Stream Addon", brls::BUTTON_BACK, [](brls::View*) {
+    this->registerAction("Complemento de vídeo", brls::BUTTON_BACK, [](brls::View*) {
         promptForAddon(stremio::STREAM_ADDON);
         return true;
     });
@@ -393,19 +447,25 @@ void StremioHome::addTopBar() {
 
     auto* logoBtn = new brls::Box();
     logoBtn->setFocusable(true);
-    logoBtn->setPadding(4, 4, 4, 4);
+    logoBtn->setAxis(brls::Axis::ROW);
+    logoBtn->setAlignItems(brls::AlignItems::CENTER);
+    logoBtn->setPadding(10, 16, 10, 16);
+    logoBtn->setBackgroundColor(nvgRGBA(255, 255, 255, 20));
     logoBtn->setCornerRadius(12);
     logoBtn->setHideHighlightBackground(true);
     logoBtn->setHighlightCornerRadius(14);
-    auto* logo = new brls::Image();
-    logo->setDimensions(42, 42);
-    logo->setScalingType(brls::ImageScalingType::FIT);
-    logo->setImageFromRes("img/stremio-logo.png");
+    auto* logo = new SVGImage();
+    logo->setDimensions(24, 24);
+    logo->setImageFromSVGRes("icon/ico-settings-pt.svg");
     logoBtn->addView(logo);
+    auto* settingsLabel = new brls::Label();
+    settingsLabel->setText("Configurações"); settingsLabel->setFontSize(20);
+    settingsLabel->setTextColor(stremio_theme::TEXT); settingsLabel->setMarginLeft(10);
+    logoBtn->addView(settingsLabel);
     // The logo opens the home-row editor; changes rebuild the rows in place
     // (deferred two frames so the editor pop fully finishes first).
     logoBtn->registerClickAction([this](brls::View*) {
-        brls::Application::pushActivity(new brls::Activity(new StremioRows([this]() {
+        brls::Application::pushActivity(new brls::Activity(new StremioSettings([this]() {
             brls::sync([this]() { brls::sync([this]() { this->rebuildRows(); }); });
         })), brls::TransitionAnimation::NONE);
         return true;
@@ -526,9 +586,9 @@ void StremioHome::addRow(const std::string& title, const std::string& url) {
 
     ASYNC_RETAIN
     stremio::getJSON<stremio::MetaList>(
-        [ASYNC_TOKEN, rec](stremio::MetaList r) {
+        [ASYNC_TOKEN, rec, title](stremio::MetaList r) {
             ASYNC_RELEASE
-            if (!r.metas.empty()) rec->setDataSource(new StremioSource(r.metas));
+            if (!r.metas.empty()) rec->setDataSource(new StremioSource(r.metas, title, true));
         },
         [ASYNC_TOKEN, rec](const std::string&) { ASYNC_RELEASE },
         url);
@@ -536,7 +596,7 @@ void StremioHome::addRow(const std::string& title, const std::string& url) {
 
 void StremioHome::addFavouritesRow() {
     this->favHeader = new brls::Label();
-    styleRowHeader(this->favHeader, "Library");
+    styleRowHeader(this->favHeader, "Biblioteca");
     this->boxHome->addView(this->favHeader);
 
     this->favRec = new HRecyclerFrame();
@@ -573,7 +633,7 @@ void StremioHome::refreshFavourites() {
     float focusX = focusHere ? brls::Application::getCurrentFocus()->getFrame().getMidX() : 0;
 
     // The Library row is ALWAYS visible: up to 4 newest saved titles plus the
-    // "See all" card (which is the whole row when the library is empty). Not
+    // "Ver tudo" card (which is the whole row when the library is empty). Not
     // toggling the row's visibility also removes the stranded-outline glitch
     // the appear/disappear cycle used to cause.
     auto& favs = Favourites::instance().all();
@@ -589,7 +649,7 @@ void StremioHome::refreshFavourites() {
 
 void StremioHome::addContinueRow() {
     this->continueHeader = new brls::Label();
-    styleRowHeader(this->continueHeader, "Continue Watching");
+    styleRowHeader(this->continueHeader, "Continuar assistindo");
     this->boxHome->addView(this->continueHeader);
 
     this->continueRec = new HRecyclerFrame();

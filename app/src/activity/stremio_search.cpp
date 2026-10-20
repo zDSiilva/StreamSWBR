@@ -13,6 +13,7 @@
 #include "view/stremio_theme.hpp"
 #include "utils/image.hpp"
 #include "api/stremio.hpp"
+#include "activity/stream_preferences.hpp"
 
 #include <algorithm>
 
@@ -49,7 +50,7 @@ public:
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
         auto item = this->list.at(index);
 
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -110,7 +111,7 @@ StremioSearch::StremioSearch(const std::string& query) {
     // Plain label, styled like the home-row titles. (brls::Header draws a
     // full-width underline that looked like a stray line above the posters.)
     auto* header = new brls::Label();
-    header->setText(fmt::format("Search: {}", query));
+    header->setText(fmt::format("Busca: {}", query));
     header->setFontSize(27);
     header->setMarginBottom(14);
     header->setMarginLeft(6);
@@ -135,6 +136,22 @@ StremioSearch::StremioSearch(const std::string& query) {
     brls::sync([this]() { brls::Application::giveFocus(this); });
 
     std::string q = urlEncode(query);
+    if (!stream_preferences::get().tmdbToken.empty()) {
+        ASYNC_RETAIN
+        portuguese_metadata::search(query, [ASYNC_TOKEN, q](nlohmann::json result) {
+            ASYNC_RELEASE
+            auto list = result.get<stremio::MetaList>();
+            if (list.metas.empty()) {
+                this->fetchInto(stremio::CINEMETA + "/catalog/movie/top/search=" + q + ".json", false);
+                this->fetchInto(stremio::CINEMETA + "/catalog/series/top/search=" + q + ".json", true);
+            } else {
+                std::vector<stremio::Meta> movies, series;
+                for (const auto& item : list.metas) (item.type == "movie" ? movies : series).push_back(item);
+                this->addResults(movies, false); this->addResults(series, true);
+            }
+        });
+        return;
+    }
     this->fetchInto(stremio::CINEMETA + "/catalog/movie/top/search=" + q + ".json", false);
     this->fetchInto(stremio::CINEMETA + "/catalog/series/top/search=" + q + ".json", true);
 }
@@ -178,7 +195,7 @@ void StremioSearch::rebuild() {
     }
 
     if (mixed.empty()) {
-        if (this->pending <= 0) this->recycler->setEmpty("No results", "icon/ico-search.svg");
+        if (this->pending <= 0) this->recycler->setEmpty("Nenhum resultado", "icon/ico-search.svg");
         return;
     }
     bool firstResults = dynamic_cast<SearchSource*>(this->recycler->getDataSource()) == nullptr;

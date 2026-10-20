@@ -44,7 +44,7 @@ public:
         cell->icon->setImageFromSVGRes("icon/ico-list.svg");
         cell->name->setText(s.label);
         cell->detail->setText(
-            s.episodes.size() == 1 ? "1 episode" : fmt::format("{} episodes", s.episodes.size()));
+            s.episodes.size() == 1 ? "1 episódio" : fmt::format("{} episódios", s.episodes.size()));
         return cell;
     }
 
@@ -104,10 +104,10 @@ public:
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto v = this->list.at(index);
         if (stremio::STREAM_ADDON.empty()) {
-            brls::Application::notify("Set your stream addon first (press − on the home screen)");
+            brls::Application::notify("Configure o complemento primeiro (pressione − na tela inicial)");
             return;
         }
-        brls::Application::notify("Finding streams…");
+        brls::Application::notify("Buscando vídeos…");
 
         // Player OSD / resume label: include the series name so it reads
         // "Series · S1E5 · Episode name" instead of just the episode.
@@ -118,13 +118,13 @@ public:
         stremio::fetchStreams("series", vid,
             [label, vid, thumb](stremio::StreamList r, std::string usedType) {
                 if (r.streams.empty()) {
-                    brls::Application::notify("No streams found");
+                    brls::Application::notify("Nenhum vídeo encontrado");
                     return;
                 }
                 ResumeEntry key{usedType, vid, label, thumb};
                 brls::Application::pushActivity(new brls::Activity(new StreamPicker(label, r.streams, key)));
             },
-            [](const std::string& e) { brls::Application::notify("Stream error: " + e); });
+            [](const std::string& e) { brls::Application::notify("Erro ao buscar vídeos: " + e); });
     }
 
     void clearData() override { this->list.clear(); }
@@ -163,7 +163,7 @@ void StremioSeries::init() {
 void StremioSeries::setSeasons(
     const std::string& name, const std::vector<stremio::Video>& videos, const std::string& background) {
     if (videos.empty()) {
-        this->recycler->setError("No episodes found");
+        this->recycler->setError("Nenhum episódio encontrado");
         return;
     }
     // Group episodes by season (std::map keeps seasons in order).
@@ -173,10 +173,10 @@ void StremioSeries::setSeasons(
     std::vector<SeasonEntry> seasons;
     for (auto& kv : bySeason) {
         if (kv.first == 0) continue;  // skip specials (season 0)
-        seasons.push_back({fmt::format("Season {}", kv.first), kv.second});
+        seasons.push_back({fmt::format("Temporada {}", kv.first), kv.second});
     }
     if (seasons.empty()) {
-        this->recycler->setError("No episodes found");
+        this->recycler->setError("Nenhum episódio encontrado");
         return;
     }
     this->recycler->setDataSource(new SeasonSource(name, background, std::move(seasons)));
@@ -216,6 +216,8 @@ StremioSeason::StremioSeason(const std::string& seriesName, const std::string& t
     const std::vector<stremio::Video>& episodes, const std::string& background) {
     brls::Logger::debug("StremioSeason: {} ({} eps)", title, episodes.size());
     this->setAxis(brls::Axis::COLUMN);
+    this->setFocusable(true);
+    this->setHideHighlight(true);
     this->setDimensions(brls::Application::contentWidth, brls::Application::contentHeight);
     this->setBackgroundColor(brls::Application::getTheme()["brls/background"]);
     this->setPadding(20, 40, 20, 40);
@@ -234,6 +236,42 @@ StremioSeason::StremioSeason(const std::string& seriesName, const std::string& t
         return true;
     });
 
-    this->recycler->setDataSource(new EpisodeSource(seriesName, background, episodes));
+    auto localized = episodes;
+    for (auto& video : localized) {
+        video.name = "Episódio " + std::to_string(video.episode);
+        video.overview = "Sinopse em português indisponível.";
+    }
+    this->recycler->setDataSource(new EpisodeSource(seriesName, background, localized));
     brls::sync([this]() { brls::Application::giveFocus(this->recycler); });
+    if (!episodes.empty()) {
+        auto id = episodes.front().id.substr(0, episodes.front().id.find(':'));
+        auto seasonNumber = episodes.front().season;
+        ASYNC_RETAIN
+        portuguese_metadata::season(id, seasonNumber,
+            [ASYNC_TOKEN, localized, seriesName, background](nlohmann::json data) mutable {
+                ASYNC_RELEASE
+                if (!data.contains("episodes") || !data["episodes"].is_array()) return;
+                for (auto& video : localized) {
+                    for (const auto& entry : data["episodes"]) {
+                        if (stremio::jint(entry, "episode_number") != video.episode) continue;
+                        auto name = stremio::jstr(entry, "name"), overview = stremio::jstr(entry, "overview");
+                        if (!name.empty()) video.name = name;
+                        if (!overview.empty()) video.overview = overview;
+                        break;
+                    }
+                }
+                bool focused = false;
+                size_t index = 0;
+                for (auto* view = brls::Application::getCurrentFocus(); view; view = view->getParent()) {
+                    if (auto* cell = dynamic_cast<RecyclingGridItem*>(view)) index = cell->getIndex();
+                    if (view == this) { focused = true; break; }
+                }
+                if (focused) brls::Application::giveFocus(this);
+                this->recycler->setDataSource(new EpisodeSource(seriesName, background, localized));
+                if (focused) {
+                    this->recycler->selectRowAt(index, false);
+                    brls::Application::giveFocus(this->recycler);
+                }
+            });
+    }
 }

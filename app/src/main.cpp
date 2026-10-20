@@ -5,6 +5,7 @@
 #include "utils/thread.hpp"
 #include "api/analytics.hpp"
 #include "api/stremio.hpp"
+#include "activity/stream_preferences.hpp"
 #include "activity/stremio_home.hpp"
 
 #include "view/svg_image.hpp"
@@ -72,6 +73,13 @@ int main(int argc, char* argv[]) {
     // easier than typing a long URL on the on-screen keyboard.
     stremio::loadAddon(conf.configDir());
     stremio::importAddonFromFile(conf.configDir());
+
+    stream_preferences::load(conf.configDir());
+    stream_preferences::importFile(conf.configDir());
+    portuguese_metadata::configure(conf.configDir());
+
+    // Portuguese edition: use the existing Portuguese player resources as well.
+    brls::Platform::APP_LOCALE_DEFAULT = brls::LOCALE_PT;
 
     // Init the app and i18n
     if (!brls::Application::init()) {

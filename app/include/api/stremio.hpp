@@ -13,6 +13,7 @@
 #include <borealis/core/logger.hpp>
 #include <borealis/core/thread.hpp>
 #include "api/http.hpp"
+#include "api/portuguese_metadata.hpp"
 
 #include <thread>
 #include <chrono>
@@ -224,7 +225,10 @@ inline void getJSON(std::function<void(Result)> then, OnError error, const std::
                 if (resp.empty()) {
                     lastErr = "empty response";
                 } else {
-                    auto j = nlohmann::json::parse(resp).get<Result>();
+                    auto data = nlohmann::json::parse(resp);
+                    // Full metadata is localized independently of the playback addon.
+                    if (data.contains("meta")) portuguese_metadata::localizeDetail(data);
+                    auto j = data.get<Result>();
                     brls::sync(std::bind(std::move(then), std::move(j)));
                     return;
                 }

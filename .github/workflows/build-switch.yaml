@@ -1,18 +1,29 @@
-name: Build Switch NRO
+name: Build Switch NRO PT-BR
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main, "ptbr/**"]
     paths-ignore:
     - README.md
     - images/**
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Portuguese metadata and stream options
+      run: |
+        g++ -std=c++17 -pthread -Itests/stubs -Iapp/include \
+          -Ilibrary/borealis/library/include/borealis/extern \
+          tests/portuguese_test.cpp app/src/api/portuguese_metadata.cpp -o /tmp/streamfin-pt-test
+        /tmp/streamfin-pt-test
   build-nx:
+    needs: test
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkita64:20260219
@@ -39,14 +50,5 @@ jobs:
     - name: Upload nro artifact
       uses: actions/upload-artifact@v4
       with:
-        name: StreamFin-NintendoSwitch
+        name: StreamFin-PT-BR-NintendoSwitch
         path: build/StreamFin.nro
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      with:
-        name: StreamFinEX v0.3.9
-        tag_name: v0.3.9
-        files: build/StreamFin.nro
-        body: |
-          Exiting the player returns to the stream picker (episode-to-episode flow) instead of jumping home.
-          Copy `StreamFin.nro` to `/switch/` on your SD card.

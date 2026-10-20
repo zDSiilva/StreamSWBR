@@ -11,6 +11,9 @@
 #include "view/mpv_core.hpp"
 #include "tab/remote_view.hpp"
 #include "api/stremio.hpp"
+#include "activity/stream_preferences.hpp"
+#include "activity/stream_options.hpp"
+#include "view/stremio_theme.hpp"
 
 #include <algorithm>
 
@@ -34,9 +37,8 @@ public:
         this->init();
         this->pending.clear();
         this->fileLoaded = false;
-        if (stremio::SUBTITLES_ADDON.empty()) return;
-
         int ticket = ++this->requestTicket;
+        if (stremio::SUBTITLES_ADDON.empty() || stream_preferences::get().subtitles == "off") return;
         std::string url = stremio::SUBTITLES_ADDON + "/subtitles/" + type + "/" + id + ".json";
         stremio::getJSON<stremio::SubtitleList>(
             [this, ticket](stremio::SubtitleList r) {
@@ -79,7 +81,7 @@ private:
     void attach() {
         auto& mpv = MPVCore::instance();
         for (auto& s : this->pending) {
-            std::string title = s.lang.empty() ? "External" : s.lang;
+            std::string title = s.lang.empty() ? "Externa" : s.lang;
             // "auto" = add without selecting; the user picks via the + menu.
             mpv.command("sub-add", s.url.c_str(), "auto", title.c_str(), s.lang.c_str());
         }
@@ -98,20 +100,31 @@ public:
     StreamCell() {
         this->setFocusable(true);
         this->setAxis(brls::Axis::COLUMN);
-        this->setPadding(12, 20, 12, 20);
-        this->setCornerRadius(6);
+        this->setPadding(16, 24, 16, 24);
+        this->setCornerRadius(12);
+        this->setBackgroundColor(nvgRGBA(255, 255, 255, 16));
 
         this->name = new brls::Label();
         this->name->setFontSize(24);
+        this->name->setSingleLine(true);
+        this->name->setAutoAnimate(false);
+        this->name->setTextColor(stremio_theme::TEXT);
         this->addView(this->name);
 
         this->detail = new brls::Label();
         this->detail->setFontSize(18);
+        this->detail->setSingleLine(true);
+        this->detail->setTextColor(stremio_theme::TEXT_DIM);
         this->addView(this->detail);
+        this->registerAction("Detalhes da fonte", brls::BUTTON_X, [this](brls::View*) {
+            if (onDetails) onDetails();
+            return true;
+        });
     }
 
     brls::Label* name = nullptr;
     brls::Label* detail = nullptr;
+    std::function<void()> onDetails;
 };
 
 class StreamSource : public RecyclingGridDataSource {
@@ -125,28 +138,34 @@ public:
         StreamCell* cell = dynamic_cast<StreamCell*>(recycler->dequeueReusableCell("Cell"));
         auto& s = this->list.at(index);
 
-        std::string name = s.name;
-        std::replace(name.begin(), name.end(), '\n', ' ');
-        std::string desc = !s.description.empty() ? s.description : s.title;
-        std::replace(desc.begin(), desc.end(), '\n', ' ');
-
-        cell->name->setText(name.empty() ? "Stream" : name);
-        cell->detail->setText(desc);
+        const std::string raw = s.name + "\n" + s.title + "\n" + s.description;
+        auto favorite = stream_preferences::get().preferredServer;
+        bool preferred = stream_options::preferred(raw, favorite);
+        cell->name->setText(stream_options::server(raw, favorite) + (preferred ? "  ★ Preferido" : ""));
+        cell->detail->setText(stream_options::quality(raw) + "  ·  " + stream_options::audio(raw) +
+            "  ·  Opção " + std::to_string(index + 1));
+        cell->onDetails = [raw]() {
+            auto* dialog = new brls::Dialog(raw);
+            dialog->addButton("Fechar", []() {});
+            dialog->open();
+        };
         return cell;
     }
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto s = this->list.at(index);
         if (s.url.empty()) {
-            brls::Application::notify("This stream has no URL");
+            brls::Application::notify("Este vídeo não tem endereço de reprodução");
             return;
         }
         // Remember what we're playing so the tracker can resume/record by id.
         ResumeTracker::instance().setCurrent(this->key);
         // Ask the subtitles addon (if configured) for subs for this title.
         SubLoader::instance().prepare(this->key.streamType, this->key.streamId);
-        // Prefer English audio tracks for this (and subsequent) playback.
-        MPVCore::instance().command("set", "alang", "eng,en");
+        auto preferences = stream_preferences::get();
+        MPVCore::instance().command("set", "alang", preferences.audio.c_str());
+        MPVCore::instance().command("set", "slang", preferences.subtitles == "off" ? "" : preferences.subtitles.c_str());
+        MPVCore::instance().command("set", "sid", preferences.subtitles == "off" ? "no" : "auto");
         // Show the media title (movie name / "Series · S1E5 · Episode") on the
         // player OSD, not the raw stream/source name.
         std::string title = this->key.name.empty() ? s.name : this->key.name;
@@ -164,15 +183,34 @@ private:
 
 StreamPicker::StreamPicker(
     const std::string& title, const std::vector<stremio::Stream>& streams, const ResumeEntry& resumeKey) {
+    this->resumeKey = resumeKey;
     brls::Logger::debug("StreamPicker: {} streams", streams.size());
     this->setAxis(brls::Axis::COLUMN);
     this->setDimensions(brls::Application::contentWidth, brls::Application::contentHeight);
-    this->setBackgroundColor(brls::Application::getTheme()["brls/background"]);
+    this->setBackgroundColor(nvgRGB(17, 23, 49));
     this->setPadding(20, 40, 20, 40);
     // Hold focus here (hidden highlight) while the list loads / when empty,
     // so the outline can't float over the covered detail screen.
     this->setFocusable(true);
     this->setHideHighlight(true);
+
+    auto* heading = new brls::Label();
+    heading->setText(title); heading->setFontSize(28); heading->setSingleLine(true);
+    heading->setAutoAnimate(false); heading->setTextColor(stremio_theme::TEXT);
+    heading->setMarginBottom(12); this->addView(heading);
+    auto* filters = new brls::Box();
+    this->filterButton = filters;
+    filters->setFocusable(true); filters->setPadding(10, 16, 10, 16); filters->setCornerRadius(10);
+    filters->setMarginBottom(16); filters->setBackgroundColor(nvgRGBA(255, 255, 255, 18));
+    this->filterLabel = new brls::Label(); this->filterLabel->setFontSize(19);
+    this->filterLabel->setTextColor(stremio_theme::TEXT); filters->addView(this->filterLabel);
+    auto changeFilter = [this](brls::View*) {
+        this->filter = (this->filter + 1) % 3; this->refresh(); return true;
+    };
+    filters->registerClickAction(changeFilter);
+    filters->addGestureRecognizer(new brls::TapGestureRecognizer(filters));
+    this->addView(filters);
+    this->registerAction("Filtrar áudio", brls::BUTTON_Y, changeFilter);
 
     this->recycler = new RecyclingGrid();
     this->recycler->setGrow(1.0f);
@@ -186,23 +224,46 @@ StreamPicker::StreamPicker(
     // Addons (e.g. AIOStreams) may return non-playable info entries alongside
     // real streams — "Removal Reasons", "no results", etc. — with no URL.
     // Keep only playable streams so the user can't select a dead entry.
-    std::vector<stremio::Stream> playable;
     for (auto& s : streams)
-        if (!s.url.empty()) playable.push_back(s);
-
-    if (playable.empty()) {
-        // Everything the addon offered was filtered out (often by the addon's
-        // own quality/resolution filters). Point the user at the real cause.
-        this->recycler->setEmpty("No playable streams — check your addon's quality/resolution filters");
-    } else {
-        this->recycler->setDataSource(new StreamSource(resumeKey, playable));
-    }
+        if (!s.url.empty()) this->streams.push_back(s);
+    this->refresh();
     // Defer focus until after the activity is on screen.
     brls::sync([this]() { brls::Application::giveFocus(this); });
-    brls::sync([this]() { brls::Application::giveFocus(this->recycler); });
+    brls::sync([this]() {
+        brls::Application::giveFocus(this->streams.empty() ? static_cast<brls::View*>(this->filterButton) : this->recycler);
+    });
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
         brls::Application::popActivity();
         return true;
     });
+}
+
+void StreamPicker::refresh() {
+    bool focused = false;
+    for (auto* view = brls::Application::getCurrentFocus(); view; view = view->getParent())
+        if (view == this) { focused = true; break; }
+    // Recycled rows must not retain the global focus while the filter changes.
+    if (focused) brls::Application::giveFocus(this->filterButton);
+    const char* labels[] = {"Todas as opções", "Dublados / áudio duplo", "Legendados"};
+    std::vector<stremio::Stream> filtered;
+    for (const auto& stream : this->streams) {
+        auto raw = stream.name + "\n" + stream.title + "\n" + stream.description;
+        if (filter == 1 && !stream_options::dubbed(raw)) continue;
+        if (filter == 2 && !stream_options::subtitled(raw)) continue;
+        filtered.push_back(stream);
+    }
+    auto preferred = stream_preferences::get().preferredServer;
+    std::stable_sort(filtered.begin(), filtered.end(), [preferred](const stremio::Stream& a, const stremio::Stream& b) {
+        auto isPreferred = [&preferred](const stremio::Stream& s) {
+            return stream_options::preferred(s.name + "\n" + s.title + "\n" + s.description, preferred);
+        };
+        return isPreferred(a) && !isPreferred(b);
+    });
+    this->filterLabel->setText(std::string(labels[filter]) + " · " + std::to_string(filtered.size()) +
+        " opções · Y filtrar · X detalhes");
+    if (filtered.empty()) this->recycler->setEmpty(this->streams.empty() ?
+        "Nenhum vídeo compatível. Verifique o complemento." : "Nenhuma opção neste filtro. Pressione Y para ver todas.");
+    else this->recycler->setDataSource(new StreamSource(this->resumeKey, filtered));
+    if (focused && !filtered.empty()) brls::Application::giveFocus(this->recycler);
 }

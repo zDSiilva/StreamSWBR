@@ -42,7 +42,7 @@ public:
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
         auto item = this->list.at(index);
 
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -101,7 +101,7 @@ StremioAnime::StremioAnime() {
     this->headline->setMarginLeft(6);
     this->headline->setTextColor(stremio_theme::TEXT);
     this->headline->setGrow(1.0f);
-    this->headline->setText("Anime · Trending");
+    this->headline->setText("Animes · Em alta");
     top->addView(this->headline);
 
     this->btnSearch = new brls::Box();
@@ -112,7 +112,7 @@ StremioAnime::StremioAnime() {
     this->btnSearch->setBackgroundColor(nvgRGBA(255, 255, 255, 22));
     this->btnSearch->setHideHighlightBackground(true);
     this->lblSearch = new brls::Label();
-    this->lblSearch->setText("🔍 Search anime");
+    this->lblSearch->setText("🔍 Buscar animes");
     this->lblSearch->setFontSize(20);
     this->lblSearch->setTextColor(stremio_theme::TEXT);
     this->btnSearch->addView(this->lblSearch);
@@ -123,8 +123,8 @@ StremioAnime::StremioAnime() {
         brls::Application::getImeManager()->openForText(
             [this](const std::string& text) {
                 if (text.empty()) {
-                    this->headline->setText("Anime · Trending");
-                    this->lblSearch->setText("🔍 Search anime");
+                    this->headline->setText("Animes · Em alta");
+                    this->lblSearch->setText("🔍 Buscar animes");
                     this->fetch(stremio::KITSU + "/catalog/anime/kitsu-anime-trending.json");
                 } else {
                     this->headline->setText("Anime · " + text);
@@ -132,14 +132,14 @@ StremioAnime::StremioAnime() {
                     this->fetch(stremio::KITSU + "/catalog/anime/kitsu-anime-list/search=" + urlEncode(text) + ".json");
                 }
             },
-            "Search anime (Kitsu)", "Leave empty to go back to trending", 64, "", 0);
+            "Buscar animes (Kitsu)", "Deixe vazio para voltar aos animes em alta", 64, "", 0);
     };
     this->btnSearch->registerClickAction([doSearch](brls::View*) {
         doSearch();
         return true;
     });
     this->btnSearch->addGestureRecognizer(new brls::TapGestureRecognizer(this->btnSearch));
-    this->registerAction("Search", brls::BUTTON_Y, [doSearch](brls::View*) {
+    this->registerAction("Buscar", brls::BUTTON_Y, [doSearch](brls::View*) {
         doSearch();
         return true;
     });
@@ -174,7 +174,7 @@ void StremioAnime::fetch(const std::string& url) {
         [ASYNC_TOKEN](stremio::MetaList r) {
             ASYNC_RELEASE
             if (r.metas.empty()) {
-                this->recycler->setEmpty("Nothing found");
+                this->recycler->setEmpty("Nada encontrado");
                 return;
             }
             this->recycler->setDataSource(new AnimeGridSource(r.metas));
@@ -182,7 +182,7 @@ void StremioAnime::fetch(const std::string& url) {
         },
         [ASYNC_TOKEN](const std::string& e) {
             ASYNC_RELEASE
-            this->recycler->setEmpty("Anime addon error: " + e);
+            this->recycler->setEmpty("Erro no complemento de animes: " + e);
         },
         url);
 }

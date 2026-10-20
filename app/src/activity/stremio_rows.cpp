@@ -24,22 +24,27 @@ const std::vector<RowDef>& registry() {
         std::time_t now = std::time(nullptr);
         std::string year = std::to_string(1900 + std::localtime(&now)->tm_year);
 
-        d.push_back({"popular-movies", "Popular Movies", cat("movie", "top.json")});
-        d.push_back({"popular-series", "Popular Series", cat("series", "top.json")});
-        d.push_back({"new-movies", "New Movies", cat("movie", ("year/genre=" + year + ".json").c_str())});
-        d.push_back({"new-series", "New Series", cat("series", ("year/genre=" + year + ".json").c_str())});
-        d.push_back({"top-movies", "Top Rated Movies", cat("movie", "imdbRating.json")});
-        d.push_back({"top-series", "Top Rated Series", cat("series", "imdbRating.json")});
+        d.push_back({"popular-movies", "Filmes populares", cat("movie", "top.json")});
+        d.push_back({"popular-series", "Séries populares", cat("series", "top.json")});
+        d.push_back({"new-movies", "Filmes recentes", cat("movie", ("year/genre=" + year + ".json").c_str())});
+        d.push_back({"new-series", "Séries recentes", cat("series", ("year/genre=" + year + ".json").c_str())});
+        d.push_back({"top-movies", "Filmes mais bem avaliados", cat("movie", "imdbRating.json")});
+        d.push_back({"top-series", "Séries mais bem avaliadas", cat("series", "imdbRating.json")});
         d.push_back({"anime", "Anime", ""});  // special: Kitsu row with More card
 
         // Every Cinemeta genre, movies + series.
         static const char* genres[] = {"Action", "Adventure", "Animation", "Biography", "Comedy", "Crime",
             "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Musical", "Mystery",
             "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western"};
-        for (const char* g : genres) {
-            d.push_back({std::string("movie-") + g, std::string(g) + " Movies",
+        static const char* genreNames[] = {"Ação", "Aventura", "Animação", "Biografia", "Comédia", "Crime",
+            "Documentário", "Drama", "Família", "Fantasia", "História", "Terror", "Música", "Musical", "Mistério",
+            "Romance", "Ficção científica", "Esporte", "Suspense", "Guerra", "Faroeste"};
+        static_assert(sizeof(genres) == sizeof(genreNames), "Genre labels must match protocol genres");
+        for (size_t i = 0; i < sizeof(genres) / sizeof(genres[0]); ++i) {
+            const char* g = genres[i];
+            d.push_back({std::string("movie-") + g, std::string("Filmes · ") + genreNames[i],
                 cat("movie", (std::string("top/genre=") + g + ".json").c_str())});
-            d.push_back({std::string("series-") + g, std::string(g) + " Series",
+            d.push_back({std::string("series-") + g, std::string("Séries · ") + genreNames[i],
                 cat("series", (std::string("top/genre=") + g + ".json").c_str())});
         }
         return d;
@@ -128,25 +133,26 @@ class RowCell : public RecyclingGridItem {
 public:
     RowCell() {
         this->setFocusable(true);
-        this->setAxis(brls::Axis::ROW);
-        this->setAlignItems(brls::AlignItems::CENTER);
-        this->setPadding(8, 14, 8, 14);
-        this->setCornerRadius(6);
+        this->setAxis(brls::Axis::COLUMN);
+        this->setPadding(12, 18, 12, 18);
+        this->setCornerRadius(12);
+        this->setBackgroundColor(nvgRGBA(255, 255, 255, 16));
 
         this->name = new brls::Label();
-        this->name->setFontSize(20);
-        this->name->setGrow(1.0f);
+        this->name->setFontSize(22);
+        this->name->setIsWrapping(true);
+        this->name->setMarginBottom(6);
         this->addView(this->name);
 
         this->state = new brls::Label();
         this->state->setFontSize(18);
         this->addView(this->state);
 
-        this->registerAction("Move up", brls::BUTTON_Y, [this](brls::View*) {
+        this->registerAction("Mover para cima", brls::BUTTON_Y, [this](brls::View*) {
             if (this->onMove) this->onMove(-1);
             return true;
         });
-        this->registerAction("Move down", brls::BUTTON_X, [this](brls::View*) {
+        this->registerAction("Mover para baixo", brls::BUTTON_X, [this](brls::View*) {
             if (this->onMove) this->onMove(+1);
             return true;
         });
@@ -171,9 +177,9 @@ public:
         RowCell* cell = dynamic_cast<RowCell*>(recycler->dequeueReusableCell("Cell"));
         auto& r = this->rows->at(index);
         const rowcfg::RowDef* def = rowcfg::find(r.first);
-        cell->name->setText(def ? def->title : r.first);
+        cell->name->setText(std::to_string(index + 1) + " · " + (def ? def->title : r.first));
         cell->name->setTextColor(r.second ? stremio_theme::TEXT : stremio_theme::TEXT_DIM);
-        cell->state->setText(r.second ? "On" : "Off");
+        cell->state->setText(r.second ? "● Visível na tela inicial" : "○ Oculta · A para mostrar");
         cell->state->setTextColor(r.second ? stremio_theme::ACCENT_HI : stremio_theme::TEXT_DIM);
         size_t i = index;
         auto mv = this->move;
@@ -196,31 +202,54 @@ private:
 StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
     this->setAxis(brls::Axis::COLUMN);
     this->setDimensions(brls::Application::contentWidth, brls::Application::contentHeight);
-    this->setPadding(20, 120, 20, 120);
+    this->setPadding(24, 60, 24, 60);
     this->setFocusable(true);
     this->setHideHighlight(true);
 
     this->head = new brls::Label();
-    this->head->setFontSize(26);
+    this->head->setFontSize(28);
     this->head->setTextColor(stremio_theme::TEXT);
     this->head->setMarginBottom(14);
     this->addView(this->head);
+    auto* hint = new brls::Label();
+    hint->setText("A mostrar/ocultar · Y mover para cima · X mover para baixo · B salvar e voltar");
+    hint->setFontSize(17); hint->setTextColor(stremio_theme::TEXT_DIM); hint->setMarginBottom(18);
+    this->addView(hint);
 
     this->rows = rowcfg::load();
 
     this->recycler = new RecyclingGrid();
     this->recycler->setGrow(1.0f);
     this->recycler->setScrollingIndicatorVisible(false);
-    this->recycler->spanCount = 3;
-    this->recycler->estimatedRowHeight = 64;
-    this->recycler->estimatedRowSpace = 8;
+    this->recycler->spanCount = 2;
+    this->recycler->estimatedRowHeight = 108;
+    this->recycler->estimatedRowSpace = 12;
     this->recycler->registerCell("Cell", RowCell::create);
     this->addView(this->recycler);
+
+    auto* footer = new brls::Box(); footer->setAxis(brls::Axis::ROW); footer->setMarginTop(14);
+    auto* saveButton = new brls::Button(); saveButton->setText("Salvar e voltar");
+    saveButton->registerClickAction([this](brls::View*) {
+        if (this->dirty) {
+            rowcfg::save(this->rows);
+            if (this->onApply) this->onApply();
+        }
+        brls::Application::popActivity(); return true;
+    });
+    footer->addView(saveButton);
+    auto* resetButton = new brls::Button(); resetButton->setText("Restaurar padrão"); resetButton->setMarginLeft(16);
+    resetButton->registerClickAction([this](brls::View*) {
+        auto* dialog = new brls::Dialog("Restaurar a ordem e as categorias padrão? A mudança será salva ao sair desta tela.");
+        dialog->addButton("Cancelar", []() {});
+        dialog->addButton("Restaurar", [this]() { this->rows = rowcfg::defaults(); this->dirty = true; this->reload(0); });
+        dialog->open(); return true;
+    });
+    footer->addView(resetButton); this->addView(footer);
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](brls::View*) {
         if (this->dirty) {
             rowcfg::save(this->rows);
-            brls::Application::notify("Home rows updated");
+            brls::Application::notify("Categorias atualizadas");
             if (this->onApply) this->onApply();
         }
         brls::Application::popActivity();
@@ -232,11 +261,15 @@ StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
 }
 
 void StremioRows::reload(size_t focusIndex) {
+    bool focused = false;
+    for (auto* view = brls::Application::getCurrentFocus(); view; view = view->getParent())
+        if (view == this) { focused = true; break; }
+    if (focused) brls::Application::giveFocus(this);
     size_t on = 0;
     for (auto& r : this->rows)
         if (r.second) on++;
     this->head->setText(fmt::format(
-        "Home rows · {} of {} enabled — A toggle · Y up · X down · B save", on, this->rows.size()));
+        "Organizar categorias · {} de {} visíveis", on, this->rows.size()));
     auto move = [this](size_t i, int dir) {
         size_t j = (size_t)((int)i + dir);
         if (j >= this->rows.size()) return;

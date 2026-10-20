@@ -4,6 +4,7 @@
 #include "activity/stremio_library.hpp"
 #include "activity/stremio_detail.hpp"
 #include "activity/stremio_favourites.hpp"
+#include "activity/stream_options.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/video_card.hpp"
 #include "view/svg_image.hpp"
@@ -16,11 +17,10 @@ using namespace brls::literals;
 
 namespace {
 
-const char* SORT_NAMES[] = {"Recent", "Name", "Year", "Rating"};
+const char* SORT_NAMES[] = {"Recentes", "Nome", "Ano", "Nota"};
 
 std::string lower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    return s;
+    return stream_options::lower(std::move(s));
 }
 
 // Grid source: same cell styling as the home rows; A opens the detail screen,
@@ -35,7 +35,7 @@ public:
         FavCardCell* cell = dynamic_cast<FavCardCell*>(recycler->dequeueReusableCell("Cell"));
         auto item = this->list.at(index);
 
-        cell->labelTitle->setText(item.name);
+        cell->bindTitle(item.id, item.type, item.name);
         if (item.year.empty()) {
             cell->labelExt->setVisibility(brls::Visibility::GONE);
         } else {
@@ -110,8 +110,8 @@ StremioLibrary::StremioLibrary() {
     this->headline->setGrow(1.0f);
     top->addView(this->headline);
 
-    this->btnSearch = makePill(&this->lblSearch, "🔍 Search");
-    this->btnSort = makePill(&this->lblSort, "Sort: Recent");
+    this->btnSearch = makePill(&this->lblSearch, "🔍 Buscar");
+    this->btnSort = makePill(&this->lblSort, "Ordenar: Recentes");
     top->addView(this->btnSearch);
     top->addView(this->btnSort);
     this->addView(top);
@@ -120,24 +120,24 @@ StremioLibrary::StremioLibrary() {
         brls::Application::getImeManager()->openForText(
             [this](const std::string& text) {
                 this->filter = lower(text);
-                this->lblSearch->setText(text.empty() ? "🔍 Search" : "🔍 " + text);
+                this->lblSearch->setText(text.empty() ? "🔍 Buscar" : "🔍 " + text);
                 this->rebuild();
             },
-            "Search library", "Leave empty to clear the filter", 64, this->filter, 0);
+            "Buscar na biblioteca", "Deixe vazio para limpar o filtro", 64, this->filter, 0);
     };
     this->btnSearch->registerClickAction([doSearch](brls::View*) {
         doSearch();
         return true;
     });
     this->btnSearch->addGestureRecognizer(new brls::TapGestureRecognizer(this->btnSearch));
-    this->registerAction("Search", brls::BUTTON_Y, [doSearch](brls::View*) {
+    this->registerAction("Buscar", brls::BUTTON_Y, [doSearch](brls::View*) {
         doSearch();
         return true;
     });
 
     this->btnSort->registerClickAction([this](brls::View*) {
         this->sortMode = (this->sortMode + 1) % 4;
-        this->lblSort->setText(std::string("Sort: ") + SORT_NAMES[this->sortMode]);
+        this->lblSort->setText(std::string("Ordenar: ") + SORT_NAMES[this->sortMode]);
         this->rebuild();
         return true;
     });
@@ -189,14 +189,14 @@ void StremioLibrary::rebuild() {
     if (!this->filter.empty()) {
         std::vector<stremio::Meta> kept;
         for (auto& m : list)
-            if (lower(m.name).find(this->filter) != std::string::npos) kept.push_back(m);
+            if (lower(portuguese_metadata::cachedTitle(m.id, m.type, m.name)).find(this->filter) != std::string::npos) kept.push_back(m);
         list = std::move(kept);
     }
 
     switch (this->sortMode) {
     case 1:  // name A→Z
         std::sort(list.begin(), list.end(),
-            [](const stremio::Meta& a, const stremio::Meta& b) { return lower(a.name) < lower(b.name); });
+            [](const stremio::Meta& a, const stremio::Meta& b) { return lower(portuguese_metadata::cachedTitle(a.id, a.type, a.name)) < lower(portuguese_metadata::cachedTitle(b.id, b.type, b.name)); });
         break;
     case 2:  // year, newest first
         std::sort(list.begin(), list.end(),
@@ -212,10 +212,10 @@ void StremioLibrary::rebuild() {
         break;  // recent = insertion order, already reversed
     }
 
-    this->headline->setText(fmt::format("Library · {} title{}", list.size(), list.size() == 1 ? "" : "s"));
+    this->headline->setText(fmt::format("Biblioteca · {} título{}", list.size(), list.size() == 1 ? "" : "s"));
     if (list.empty()) {
-        this->recycler->setEmpty(this->filter.empty() ? "Library is empty — press X on any poster to add it"
-                                                      : "No titles match the search");
+        this->recycler->setEmpty(this->filter.empty() ? "Biblioteca vazia — pressione X em um pôster para adicionar"
+                                                      : "Nenhum título corresponde à busca");
     } else {
         this->recycler->setDataSource(new LibraryGridSource(std::move(list)));
     }

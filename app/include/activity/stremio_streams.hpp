@@ -18,5 +18,11 @@ public:
     StreamPicker(const std::string& title, const std::vector<stremio::Stream>& streams, const ResumeEntry& resumeKey);
 
 private:
+    void refresh();
+    std::vector<stremio::Stream> streams;
+    ResumeEntry resumeKey;
+    brls::Label* filterLabel = nullptr;
+    brls::Box* filterButton = nullptr;
+    int filter = 0;
     RecyclingGrid* recycler = nullptr;
 };
