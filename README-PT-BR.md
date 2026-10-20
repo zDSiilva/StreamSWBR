@@ -30,6 +30,15 @@ Se já havia token pessoal salvo, ele continua sendo enviado somente à API ofic
 - Categorias com conteúdo centralizado horizontal e verticalmente, fundo discreto, detalhes coloridos e o destaque de foco já existente.
 - A correção de inicialização da revisão 3 está preservada: o espaçamento fica no conteúdo, nunca no HScrollingFrame.
 
+## Ajustes da revisão 5
+
+- O título agora usa um componente próprio com até duas linhas e recorte estrito nos limites do cartão. A quebra não depende da medição automática de altura da biblioteca, que era ignorada quando largura e altura estavam fixas.
+- Ano menor e fundo sutil por cartão; capas, títulos e ano permanecem em uma única coluna por filme.
+- Botão + abre Configurações na tela inicial; legenda de X, Y, − e + na tela inicial e nas configurações.
+- Detalhes com coluna de informações rolável, título menor, metadados discretos, cabeçalho Sinopse e margens entre as seções.
+- Tradução em lote dos catálogos públicos popular/em alta (até 20 nomes por consulta), associada por IMDb sem trocar os itens da biblioteca. Os nomes são guardados separadamente por 30 dias; detalhes e episódios mantêm o cache existente. Títulos fora desses lotes continuam sendo consultados individualmente em segundo plano.
+- Testes verificam associação por links IMDb válidos, bloqueio de associação por domínio parecido, cache do lote, retorno imediato dos nomes já armazenados e preservação de IDs. O novo layout requer confirmação no Switch.
+
 ## Gerar o arquivo para Switch
 
 O workflow `.github/workflows/build-switch.yaml` executa os testes e compila `StreamFin.nro`. Ele roda ao enviar mudanças para `main` ou uma branch `ptbr/**`, e também permite execução manual.

@@ -71,6 +71,19 @@ int main() {
     portuguese_metadata::clearCache();
     HTTP::authorized = true;
     auto automatic = stream_preferences::get(); automatic.tmdbToken.clear(); stream_preferences::save(automatic);
+    nlohmann::json batch = {{"metas", nlohmann::json::array({{{"id","tt1375666"},{"type","movie"},{"name","Inception"}},
+        {{"id","tt999"},{"type","movie"},{"name","Original"}}})}};
+    calls = HTTP::calls;
+    portuguese_metadata::localizeCatalog(batch);
+    assert(HTTP::calls == calls + 2);
+    assert(batch["metas"][0]["name"] == "A Origem" && batch["metas"][0]["id"] == "tt1375666");
+    assert(batch["metas"][1]["name"] == "Original");
+    calls = HTTP::calls;
+    std::string immediate;
+    portuguese_metadata::title("tt1375666","movie",[&](std::string name) { immediate = name; });
+    assert(immediate == "A Origem" && HTTP::calls == calls);
+    assert(std::filesystem::exists(directory / "metadata-pt/title-movie-tt1375666.json"));
+    portuguese_metadata::localizeCatalog(batch); assert(HTTP::calls == calls);
     movie["meta"]["videos"] = nlohmann::json::array({{{"id","tt1375666"}}});
     portuguese_metadata::localizeDetail(movie);
     assert(movie["meta"]["name"] == "A Origem");

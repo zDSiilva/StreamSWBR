@@ -37,6 +37,7 @@ public:
         auto* head = new brls::Label();
         head->setText(title);
         head->setFontSize(34);
+        head->setWidthPercentage(100); head->setSingleLine(false); head->setShrink(0);
         head->setTextColor(stremio_theme::TEXT);
         head->setMarginBottom(20);
         this->addView(head);
@@ -51,6 +52,7 @@ public:
         lbl->setFontSize(24);
         lbl->setTextColor(stremio_theme::TEXT_DIM);
         lbl->setIsWrapping(true);
+        lbl->setSingleLine(false); lbl->setWidthPercentage(100); lbl->setLineHeight(1.35f); lbl->setShrink(0);
         body->addView(lbl);
         scroll->setContentView(body);
         this->addView(scroll);
@@ -97,6 +99,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     // ---- Poster (left) ----------------------------------------------------
     this->poster = new brls::Image();
     this->poster->setDimensions(340, 510);
+    this->poster->setShrink(0);
     this->poster->setCornerRadius(10);
     this->poster->setScalingType(brls::ImageScalingType::FILL);
     // The texture is shared with the home-grid cell via the URL-keyed
@@ -109,28 +112,38 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     if (!posterSrc.empty()) Image::with(this->poster, posterSrc);
 
     // ---- Info column (right) ----------------------------------------------
+    auto* infoScroll = new brls::ScrollingFrame();
+    infoScroll->setGrow(1); infoScroll->setShrink(1); infoScroll->setMarginLeft(40);
+    infoScroll->setScrollingIndicatorVisible(true);
+    row->addView(infoScroll);
     auto* info = new brls::Box();
     info->setAxis(brls::Axis::COLUMN);
-    info->setGrow(1.0f);
-    info->setMarginLeft(44);
-    row->addView(info);
+    info->setWidthPercentage(100); info->setPaddingRight(18); info->setPaddingBottom(30);
+    infoScroll->setContentView(info);
 
     this->labelTitle = new brls::Label();
-    this->labelTitle->setText(item.name);
-    this->labelTitle->setFontSize(40);
+    this->labelTitle->setText(portuguese_metadata::cachedTitle(item.id,item.type,item.name));
+    this->labelTitle->setFontSize(34);
+    this->labelTitle->setSingleLine(false); this->labelTitle->setWidthPercentage(100);
+    this->labelTitle->setShrink(0); this->labelTitle->setLineHeight(1.15f);
+    this->labelTitle->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelTitle->setTextColor(COL_TEXT);
     this->labelTitle->setIsWrapping(true);
     info->addView(this->labelTitle);
 
     this->labelMeta = new brls::Label();
     this->labelMeta->setText(item.year);
-    this->labelMeta->setFontSize(22);
+    this->labelMeta->setFontSize(18);
+    this->labelMeta->setWidthPercentage(100); this->labelMeta->setSingleLine(false); this->labelMeta->setShrink(0);
+    this->labelMeta->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelMeta->setTextColor(COL_ACCENT);
     this->labelMeta->setMarginTop(10);
     info->addView(this->labelMeta);
 
     this->labelGenres = new brls::Label();
-    this->labelGenres->setFontSize(20);
+    this->labelGenres->setFontSize(17);
+    this->labelGenres->setWidthPercentage(100); this->labelGenres->setSingleLine(false); this->labelGenres->setShrink(0);
+    this->labelGenres->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelGenres->setTextColor(COL_DIM);
     this->labelGenres->setMarginTop(6);
     this->labelGenres->setVisibility(brls::Visibility::GONE);
@@ -140,11 +153,13 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     auto* btnRow = new brls::Box();
     btnRow->setAxis(brls::Axis::ROW);
     btnRow->setMarginTop(22);
+    btnRow->setShrink(0);
     info->addView(btnRow);
 
     this->btnWatch = new brls::Box();
     this->btnWatch->setFocusable(true);
     this->btnWatch->setAxis(brls::Axis::ROW);
+    this->btnWatch->setAlignItems(brls::AlignItems::CENTER);
     this->btnWatch->setPadding(14, 40, 14, 40);
     this->btnWatch->setCornerRadius(8);
     this->btnWatch->setBackgroundColor(stremio_theme::ACCENT);  // Stremio purple
@@ -167,13 +182,19 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->btnWatch->addGestureRecognizer(new brls::TapGestureRecognizer(this->btnWatch));
     btnRow->addView(this->btnWatch);
 
+    auto* synopsisHead = new brls::Label(); synopsisHead->setText("Sinopse");
+    synopsisHead->setFontSize(21); synopsisHead->setHeight(30); synopsisHead->setShrink(0);
+    synopsisHead->setMarginTop(24); synopsisHead->setMarginBottom(8); synopsisHead->setTextColor(COL_TEXT);
+    synopsisHead->setHorizontalAlign(brls::HorizontalAlign::LEFT); info->addView(synopsisHead);
     this->labelDesc = new brls::Label();
     this->labelDesc->setText("Carregando…");
-    this->labelDesc->setFontSize(21);
+    this->labelDesc->setFontSize(20);
+    this->labelDesc->setWidthPercentage(100); this->labelDesc->setSingleLine(false); this->labelDesc->setShrink(0);
+    this->labelDesc->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelDesc->setLineHeight(1.4f);
     this->labelDesc->setTextColor(COL_DIM);
     this->labelDesc->setIsWrapping(true);
-    this->labelDesc->setMarginTop(24);
+    this->labelDesc->setMarginTop(0);
     info->addView(this->labelDesc);
 
     // Blue "Ver mais" pill — only shown when the description was truncated.
@@ -187,6 +208,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->btnMore->setHideHighlightBackground(true);
     this->btnMore->setHighlightCornerRadius(8);
     this->btnMore->setVisibility(brls::Visibility::GONE);
+    this->btnMore->setShrink(0);
     auto* moreLbl = new brls::Label();
     moreLbl->setText("Ver mais");
     moreLbl->setFontSize(20);
@@ -204,13 +226,17 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->labelCastHead = new brls::Label();
     this->labelCastHead->setText("Elenco");
     this->labelCastHead->setFontSize(24);
+    this->labelCastHead->setHeight(32); this->labelCastHead->setShrink(0);
+    this->labelCastHead->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelCastHead->setTextColor(COL_TEXT);
     this->labelCastHead->setMarginTop(26);
     this->labelCastHead->setVisibility(brls::Visibility::GONE);
     info->addView(this->labelCastHead);
 
     this->labelCast = new brls::Label();
-    this->labelCast->setFontSize(21);
+    this->labelCast->setFontSize(18);
+    this->labelCast->setSingleLine(false); this->labelCast->setWidthPercentage(100); this->labelCast->setShrink(0);
+    this->labelCast->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelCast->setLineHeight(1.35f);
     this->labelCast->setTextColor(COL_DIM);
     this->labelCast->setIsWrapping(true);
@@ -219,11 +245,16 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     info->addView(this->labelCast);
 
     this->labelDirector = new brls::Label();
-    this->labelDirector->setFontSize(21);
+    this->labelDirector->setFontSize(18);
+    this->labelDirector->setSingleLine(false); this->labelDirector->setWidthPercentage(100); this->labelDirector->setShrink(0);
+    this->labelDirector->setHorizontalAlign(brls::HorizontalAlign::LEFT);
     this->labelDirector->setTextColor(COL_DIM);
     this->labelDirector->setMarginTop(14);
     this->labelDirector->setVisibility(brls::Visibility::GONE);
     info->addView(this->labelDirector);
+    auto* guide = new brls::Label(); guide->setText("A  Assistir / episódios     X  Biblioteca     B  Voltar");
+    guide->setFontSize(15); guide->setHeight(28); guide->setShrink(0); guide->setMarginTop(18);
+    guide->setTextColor(COL_DIM); this->addView(guide);
 
     // ---- Actions -----------------------------------------------------------
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
@@ -267,7 +298,7 @@ void StremioDetail::draw(
 }
 
 void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
-    // Prefer the (English) meta name over the catalog one — for the title AND
+    // Prefer the localized full metadata name — for the title AND
     // for the resume/OSD label used when Watch is pressed.
     if (!meta.name.empty()) {
         this->labelTitle->setText(meta.name);
@@ -300,8 +331,7 @@ void StremioDetail::applyMeta(const stremio::MetaDetail& meta) {
         this->labelGenres->setVisibility(brls::Visibility::VISIBLE);
     }
 
-    // Long descriptions overflowed off-screen (nothing on this screen
-    // scrolls). Clamp the inline text and reveal the rest behind "Ver mais".
+    // Keep a readable synopsis preview; Ver mais opens the full text.
     this->fullDesc = !meta.description.empty() ? meta.description : "Nenhuma sinopse disponível.";
     const size_t maxInline = 240;
     if (this->fullDesc.size() > maxInline) {

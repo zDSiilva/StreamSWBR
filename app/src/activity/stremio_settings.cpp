@@ -51,6 +51,10 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     auto* navigation = new brls::Label(); navigation->setText("↑ ↓ navegar · A selecionar · B voltar");
     navigation->setFontSize(17); navigation->setHeight(28); navigation->setShrink(0);
     navigation->setMarginBottom(14); navigation->setTextColor(stremio_theme::TEXT_DIM); addView(navigation);
+    auto* shortcuts = new brls::Label();
+    shortcuts->setText("Na tela inicial: X adiciona/remove da biblioteca · Y buscar · − complemento · + configurações");
+    shortcuts->setFontSize(16); shortcuts->setHeight(28); shortcuts->setShrink(0);
+    shortcuts->setMarginBottom(16); shortcuts->setTextColor(stremio_theme::TEXT_DIM); addView(shortcuts);
     auto* scroll = new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(false);
     auto* content = new brls::Box(); content->setAxis(brls::Axis::COLUMN); scroll->setContentView(content);
     addView(scroll);
@@ -101,7 +105,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     attributionLogo->setMarginTop(18);
     attributionLogo->setImageFromSVGRes("icon/tmdb-approved.svg");
     content->addView(attributionLogo);
-    about->setText("StreamFinEX · Português · Revisão 4\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
+    about->setText("StreamFinEX · Português · Revisão 5\nDados: TMDB · serviço público TMDB Addon / ElfHosted\nThis product uses the TMDB API but is not endorsed or certified by TMDB.");
     about->setFontSize(15); about->setTextColor(stremio_theme::TEXT_DIM); about->setIsWrapping(true);
     about->setMarginTop(16); content->addView(about);
     registerAction("hints/back"_i18n, brls::BUTTON_B, [this, onRowsChanged](brls::View*) {

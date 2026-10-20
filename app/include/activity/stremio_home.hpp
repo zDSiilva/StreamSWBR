@@ -26,6 +26,7 @@ private:
     void buildRows();    // add catalog rows per the saved row config
     void rebuildRows();  // re-apply row config after the editor closes
     void addTopBar();       // stremio logo + search button (scrolls with content)
+    void openSettings();
     void addFavouritesRow();
     void refreshFavourites();
     void addContinueRow();

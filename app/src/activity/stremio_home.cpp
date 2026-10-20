@@ -422,6 +422,9 @@ StremioHome::StremioHome() {
         openSearch();
         return true;
     });
+    this->registerAction("Configurações", brls::BUTTON_START, [this](brls::View*) {
+        this->openSettings(); return true;
+    });
 
     // − sets/changes the stream addon URL; also prompts automatically on
     // first launch (deferred a frame so the window is up).
@@ -454,6 +457,12 @@ bool StremioHome::parkFocus(brls::View* avoid) {
 
 // Top bar: small Stremio logo on the left, a round search button on the
 // right. Lives inside the scrolled column, so it scrolls away with the rows.
+void StremioHome::openSettings() {
+    brls::Application::pushActivity(new brls::Activity(new StremioSettings([this]() {
+        brls::sync([this]() { brls::sync([this]() { this->rebuildRows(); }); });
+    })), brls::TransitionAnimation::NONE);
+}
+
 void StremioHome::addTopBar() {
     auto* bar = new brls::Box();
     bar->setAxis(brls::Axis::ROW);
@@ -482,9 +491,7 @@ void StremioHome::addTopBar() {
     // The logo opens the home-row editor; changes rebuild the rows in place
     // (deferred two frames so the editor pop fully finishes first).
     logoBtn->registerClickAction([this](brls::View*) {
-        brls::Application::pushActivity(new brls::Activity(new StremioSettings([this]() {
-            brls::sync([this]() { brls::sync([this]() { this->rebuildRows(); }); });
-        })), brls::TransitionAnimation::NONE);
+        this->openSettings();
         return true;
     });
     logoBtn->addGestureRecognizer(new brls::TapGestureRecognizer(logoBtn));
@@ -513,6 +520,12 @@ void StremioHome::addTopBar() {
     bar->addView(btn);
 
     this->boxHome->addView(bar);
+    auto* hints = new brls::Label();
+    hints->setText("X  Adicionar/remover da biblioteca     Y  Buscar     −  Endereço do complemento     +  Configurações");
+    hints->setFontSize(16); hints->setHeight(28); hints->setShrink(0);
+    hints->setMarginLeft(56); hints->setMarginTop(14);
+    hints->setTextColor(stremio_theme::TEXT_DIM); hints->setHorizontalAlign(brls::HorizontalAlign::LEFT);
+    this->boxHome->addView(hints);
 
     auto* heading = new brls::Label(); heading->setText("Explorar categorias");
     heading->setFontSize(23); heading->setHeight(34); heading->setMarginTop(20);

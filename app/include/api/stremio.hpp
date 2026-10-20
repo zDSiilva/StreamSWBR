@@ -228,6 +228,7 @@ inline void getJSON(std::function<void(Result)> then, OnError error, const std::
                     auto data = nlohmann::json::parse(resp);
                     // Full metadata is localized independently of the playback addon.
                     if (data.contains("meta")) portuguese_metadata::localizeDetail(data);
+                    if (data.contains("metas")) portuguese_metadata::localizeCatalog(data);
                     auto j = data.get<Result>();
                     brls::sync(std::bind(std::move(then), std::move(j)));
                     return;

@@ -13,6 +13,8 @@ public:
         if (url.rfind("https://tmdb.elfhosted.com/",0) == 0) {
             if (headers != Header{"Accept: application/json"}) throw std::runtime_error("public service must not receive credentials");
             if (!authorized) throw std::runtime_error("public service unavailable");
+            if (url.find("/catalog/movie/tmdb.top.json") != std::string::npos)
+                return R"({"metas":[{"id":"tmdb:27205","name":"A Origem","links":[{"category":"imdb","url":"https://imdb.com/title/tt1375666"}]},{"id":"tmdb:999","name":"ID inválido","links":[{"category":"imdb","url":"https://imdb.com.evil.test/title/tt999"}]}]})";
             if (url.find("/meta/movie/tt1375666.json") != std::string::npos)
                 return R"({"meta":{"id":"tmdb:27205","name":"A Origem","description":"Sinopse pública em português.","genres":["Ficção científica"],"videos":[{"id":"must-not-replace-playback"}]}})";
             if (url.find("/meta/series/tt0898266.json") != std::string::npos)

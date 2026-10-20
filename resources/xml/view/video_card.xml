@@ -72,13 +72,15 @@
 
     <brls:Box
         axis="column"
+        width="100%"
         justifyContent="spaceEvenly"
         alignItems="center">
-        <brls:Label
+        <PosterTitle
             wireframe="false"
             singleLine="true"
             id="video/card/label/title"
-            height="26"
+            width="100%"
+            height="44"
             fontSize="19" />
         <brls:Label
             wireframe="false"

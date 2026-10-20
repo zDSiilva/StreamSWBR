@@ -40,6 +40,10 @@ public:
         this->labelTitle->setHorizontalAlign(brls::HorizontalAlign::CENTER);
         this->labelTitle->getParent()->setShrink(0);
         this->labelTitle->setAutoAnimate(false);
+        this->labelExt->setFontSize(11);
+        this->labelExt->setHeight(16);
+        this->setCornerRadius(10);
+        this->setBackgroundColor(nvgRGBA(255,255,255,5));
         this->registerAction("Biblioteca", brls::BUTTON_X, [this](brls::View*) {
             if (this->onToggleFav) this->onToggleFav();
             return true;

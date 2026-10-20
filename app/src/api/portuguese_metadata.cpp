@@ -11,6 +11,7 @@
 #include <thread>
 #include <ctime>
 #include <chrono>
+#include <set>
 
 namespace portuguese_metadata {
 namespace {
@@ -25,6 +26,31 @@ std::string text(const Json& j, const char* key) {
 bool imdb(const std::string& id) {
     return id.size() > 2 && id.substr(0, 2) == "tt" &&
         id.find_first_not_of("0123456789", 2) == std::string::npos;
+}
+std::string imdbId(const Json& item) {
+    for (const char* field : {"imdb_id", "id"}) { auto id = text(item,field); if (imdb(id)) return id; }
+    auto links = item.find("links");
+    if (links != item.end() && links->is_array()) for (const auto& link : *links) {
+        if (text(link,"category") != "imdb") continue;
+        auto url = text(link,"url");
+        for (const auto& prefix : {std::string("https://imdb.com/title/"),std::string("https://www.imdb.com/title/")}) {
+            if (url.rfind(prefix,0) != 0) continue;
+            auto id = url.substr(prefix.size()); id = id.substr(0,id.find_first_of("/?#"));
+            if (imdb(id)) return id;
+        }
+    }
+    return "";
+}
+void rememberTitle(const std::string& id, const std::string& type, const std::string& title) {
+    if (!imdb(id) || title.empty() || (type != "movie" && type != "series")) return;
+    const auto key = "title-" + type + "-" + id;
+    std::lock_guard<std::mutex> lock(cacheMutex);
+    auto existing = memory.find(key);
+    if (existing != memory.end() && existing->second.value("data",Json::object()).value("name","") == title) return;
+    Json record{{"until",int64_t(std::time(nullptr)) + 2592000},{"data",{{"name",title}}}};
+    if (memory.size() >= 512) memory.clear();
+    memory[key] = record;
+    try { std::ofstream out(root + "/" + key + ".json"); if (out) out << record.dump(); } catch (...) {}
 }
 Json cached(const std::string& key) {
     std::lock_guard<std::mutex> lock(cacheMutex);
@@ -134,6 +160,8 @@ void configure(const std::string& directory) {
 std::string cachedTitle(const std::string& id, const std::string& type, const std::string& fallback) {
     if (!imdb(id)) return fallback;
     if (stream_preferences::get().tmdbToken.empty()) {
+        auto titleRecord = cached("title-" + type + "-" + id);
+        auto titleName = text(titleRecord,"name"); if (!titleName.empty()) return titleName;
         auto record = cached(publicKey(id,type));
         if (!record.is_object() || !record.contains("meta") || !record["meta"].is_object()) return fallback;
         auto n = name(record["meta"]); return n.empty() ? fallback : n;
@@ -149,9 +177,30 @@ void title(const std::string& id, const std::string& type, std::function<void(st
     auto hit = cachedTitle(id, type, "");
     if (!hit.empty()) { callback(hit); return; }
     if (!queue().push([id, type, callback]() {
-        auto n = name(stream_preferences::get().tmdbToken.empty() ? publicMeta(id,type) : find(id, type));
+        auto n = cachedTitle(id,type,"");
+        if (n.empty()) n = name(stream_preferences::get().tmdbToken.empty() ? publicMeta(id,type) : find(id, type));
+        if (stream_preferences::get().tmdbToken.empty()) rememberTitle(id,type,n);
         brls::sync([callback, n]() { callback(n); });
     })) callback("");
+}
+void localizeCatalog(Json& response) {
+    if (!stream_preferences::get().tmdbToken.empty() || !response.contains("metas") || !response["metas"].is_array()) return;
+    std::set<std::string> types;
+    for (const auto& item : response["metas"]) {
+        auto type = text(item,"type");
+        if (imdb(text(item,"id")) && (type == "movie" || type == "series")) types.insert(type);
+    }
+    for (const auto& type : types) for (const auto& catalog : {std::string("tmdb.top"),std::string("tmdb.trending")}) {
+        // One shared request provides up to 20 localized names instead of one per card.
+        auto batch = request("batch-" + type + "-" + catalog,
+            publicBase + "catalog/" + type + "/" + catalog + ".json", HTTP::Header{"Accept: application/json"});
+        if (batch.contains("metas") && batch["metas"].is_array()) for (const auto& item : batch["metas"])
+            rememberTitle(imdbId(item),type,name(item));
+    }
+    for (auto& item : response["metas"]) {
+        auto id = text(item,"id"), type = text(item,"type");
+        if (imdb(id)) item["name"] = cachedTitle(id,type,text(item,"name"));
+    }
 }
 void localizeDetail(Json& response) {
     if (!response.contains("meta") || !response["meta"].is_object()) return;
@@ -174,6 +223,7 @@ void localizeDetail(Json& response) {
     if (stream_preferences::get().tmdbToken.empty()) {
         auto translated = publicMeta(id,type);
         auto n = name(translated); if (!n.empty()) meta["name"] = n;
+        rememberTitle(id,type,n);
         auto overview = text(translated,"description");
         meta["description"] = overview.empty() ? "Sinopse em português indisponível no momento. Tente novamente mais tarde." : overview;
         if (translated.contains("genres") && translated["genres"].is_array()) meta["genres"] = translated["genres"];
@@ -236,9 +286,10 @@ void search(const std::string& query, std::function<void(Json)> callback) {
                     publicBase + "catalog/" + type + "/tmdb.search/search=" + encoded + ".json", HTTP::Header{"Accept: application/json"});
                 if (results.contains("metas") && results["metas"].is_array()) for (auto item : results["metas"]) {
                     if (!item.is_object()) continue;
-                    auto id = text(item,"imdb_id"); if (!imdb(id)) id = text(item,"id");
+                    auto id = imdbId(item);
                     if (!imdb(id)) continue;
                     item["id"] = id; item["type"] = type;
+                    rememberTitle(id,type,name(item));
                     if (!item.contains("year") || !item["year"].is_string()) item["year"] = text(item,"releaseInfo").substr(0,4);
                     output["metas"].push_back(item);
                 }
