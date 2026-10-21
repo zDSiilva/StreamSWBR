@@ -92,7 +92,7 @@ void discoverNext(unsigned ticket) {
     auto end=kitsu ? current.streamId.find(':',colon+1) : colon;
     auto id=current.streamId.substr(0,end);
     session.metaPending=true;
-    stremio::getJSON<stremio::MetaResult>([ticket,current](stremio::MetaResult result) {
+    stremio::playbackMeta<stremio::MetaResult>([ticket,current](stremio::MetaResult result) {
         if (ticket!=generation || !session.active) return;
         session.metaPending=false;
         auto videos=result.meta.videos;

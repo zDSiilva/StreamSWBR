@@ -19,6 +19,11 @@ int main() {
     stremio::fetchStreams("series","tt123:1:3",[&](auto result,auto type) { cold.set_value(result.streams.size()==1 && type=="series"); },[&](auto){cold.set_value(false);});
     assert(coldResult.wait_for(2s)==std::future_status::ready && coldResult.get());
     assert(attempts==2 && brls::metadataTasks.size()==1);
+    HTTP::transport=[](const auto&,auto) { return R"({"meta":{"id":"tt123","videos":[{"id":"tt123:1:4","season":1,"episode":4}]}})"; };
+    std::promise<bool> episodeMeta; auto episodeMetaResult=episodeMeta.get_future();
+    stremio::playbackMeta<stremio::MetaResult>([&](auto result) { episodeMeta.set_value(result.meta.videos.size()==1); },
+        [&](auto){episodeMeta.set_value(false);},"https://catalog.example/meta/series/tt123.json");
+    assert(episodeMetaResult.wait_for(2s)==std::future_status::ready && episodeMetaResult.get());
 
     // A cancelled request must not start playback or prevent selecting another item.
     std::promise<bool> entered; auto enteredResult=entered.get_future();

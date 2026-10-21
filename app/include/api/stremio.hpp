@@ -586,6 +586,20 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MetaResult, meta);
 // Stream addons disagree on which type kitsu ids live under (anime / series /
 // movie), so for kitsu ids each type is tried until one returns streams.
 // `then` also receives the type that worked (for resume bookkeeping).
+template<class Result>
+inline stream_worker::Cancel playbackMeta(std::function<void(Result)> then,OnError error,const std::string& url) {
+    return stream_worker::prefetch().submit([then,error,url](stream_worker::Cancel cancel) {
+        std::string last="request failed";
+        for (int attempt=0;attempt<2 && !cancel->load();++attempt) {
+            try {
+                auto body=HTTP::get(url,HTTP::Timeout{6000},cancel,HTTP::FreshDNS{});
+                auto result=nlohmann::json::parse(body).get<Result>();
+                brls::sync([then,result,cancel]() { if (!cancel->load()) then(result); }); return;
+            } catch (const std::exception& e) { last=e.what(); }
+        }
+        brls::sync([error,last,cancel]() { if (!cancel->load() && error) error(streamError(last)); });
+    });
+}
 inline stream_worker::Cancel fetchStreams(const std::string& type, const std::string& id,
     std::function<void(StreamList, std::string)> then, OnError error, bool background=false) {
     std::vector<std::string> types{type};
