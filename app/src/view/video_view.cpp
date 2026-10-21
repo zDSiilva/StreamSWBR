@@ -654,6 +654,7 @@ void VideoView::registerMpvEvent() {
             this->volumeIcon->setImageFromSVGRes("icon/ico-volume.svg");
             break;
         case MpvEventEnum::MPV_FILE_ERROR: {
+            if (stremioSession) { stremio_playback::failed(); break; }
             auto dialog = new brls::Dialog("Esta fonte não pôde ser reproduzida. Volte à lista e escolha outra opção de vídeo. Seu progresso salvo será preservado.");
             dialog->addButton("Escolher outra fonte", []() { VideoView::close(true); });
             dialog->open();

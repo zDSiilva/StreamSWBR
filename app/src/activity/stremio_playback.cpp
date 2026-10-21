@@ -149,6 +149,23 @@ void resume(const ResumeEntry& key) {
 }
 void attach(std::function<void(const std::string&,const std::string&)> replace) { session.replace=replace; }
 void cancel() { ++generation; session=Session{}; resuming=false; }
+void failed() {
+    auto key=session.current;
+    session.active=false; session.waiting=false;
+    auto* dialog=new brls::Dialog("Esta fonte não pôde reproduzir "+key.name+". Você pode escolher outra sem perder o progresso salvo.");
+    dialog->addButton("Escolher outra fonte",[key]() {
+        VideoView::close(true);
+        auto ticket=++generation;
+        stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {
+            if (ticket!=generation) return;
+            auto entry=key; entry.streamType=type;
+            if (!result.streams.empty())
+                brls::Application::pushActivity(new brls::Activity(new StreamPicker(entry.name,result.streams,entry)));
+            else brls::Application::notify("Nenhum vídeo disponível neste momento.");
+        },[ticket](const std::string& error) { if (ticket==generation) brls::Application::notify(error); });
+    });
+    dialog->addButton("Voltar",[]() { VideoView::close(true); }); dialog->open();
+}
 bool ended() {
     if (!session.active || (!session.next && !session.metaPending)) return false;
     session.waiting=true;
