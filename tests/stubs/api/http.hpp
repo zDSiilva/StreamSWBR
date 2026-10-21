@@ -2,12 +2,20 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
+#include <atomic>
+#include <memory>
+#include <functional>
 class HTTP {
 public:
     using Header = std::vector<std::string>;
+    struct FreshDNS {};
+    using Cancel=std::shared_ptr<std::atomic_bool>;
     struct Timeout { long timeout; };
     inline static int calls = 0;
     inline static bool authorized = true;
+    inline static std::function<std::string(const std::string&,Cancel)> transport;
+    static std::string get(const std::string& url,Timeout,Cancel cancel,FreshDNS) { return transport(url,cancel); }
+    static std::string get(const std::string& url,Timeout timeout) { return get(url,Header{},timeout); }
     static std::string get(const std::string& url, const Header& headers, Timeout) {
         ++calls;
         if (url.rfind("https://tmdb.elfhosted.com/",0) == 0) {

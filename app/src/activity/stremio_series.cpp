@@ -4,6 +4,7 @@
 #include "activity/stremio_series.hpp"
 #include "activity/stremio_streams.hpp"
 #include "activity/stremio_resume.hpp"
+#include "activity/stremio_playback.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/video_card.hpp"
 #include "view/svg_image.hpp"
@@ -113,6 +114,7 @@ public:
             return;
         }
         brls::Application::notify("Buscando vídeos…");
+        stremio_playback::interruptResume();
 
         // Player OSD / resume label: include the series name so it reads
         // "Series · S1E5 · Episode name" instead of just the episode.

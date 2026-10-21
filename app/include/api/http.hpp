@@ -18,6 +18,7 @@
 class HTTP {
 public:
     using Header = std::vector<std::string>;
+    struct FreshDNS {};
     using Form = std::unordered_map<std::string, std::string>;
     // For cancellable requests
     using Cancel = std::shared_ptr<std::atomic_bool>;
@@ -106,6 +107,7 @@ private:
 
     void add_header(const std::string& header);
     void set_option(const Header& hs);
+    void set_option(const FreshDNS&);
     void set_option(const Range& r);
     void set_option(const Timeout& t);
     void set_option(const Cancel& c);

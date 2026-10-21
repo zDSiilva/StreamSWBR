@@ -1,0 +1,60 @@
+#include "api/stremio.hpp"
+#include <cassert>
+#include <future>
+#include <iostream>
+using namespace std::chrono_literals;
+namespace portuguese_metadata {
+void localizeDetail(nlohmann::json&) { assert(false && "metadata queue must remain blocked"); }
+void localizeCatalog(nlohmann::json&) { assert(false && "metadata queue must remain blocked"); }
+}
+static std::string playable() { return R"({"streams":[{"name":"Malfoy","url":"https://video.example/test.mp4"}]})"; }
+int main() {
+    stremio::STREAM_ADDON="https://addon.example";
+    // Deliberately never run the UI/metadata queue: cold-start playback must bypass it.
+    stremio::getJSON<stremio::MetaList>([](auto){assert(false);},[](auto){assert(false);},"https://catalog.example");
+    assert(brls::metadataTasks.size()==1);
+    std::atomic_int attempts{0};
+    HTTP::transport=[&](const auto&,auto) { if (++attempts==1) throw std::runtime_error("Could not resolve hostname"); return playable(); };
+    std::promise<bool> cold; auto coldResult=cold.get_future();
+    stremio::fetchStreams("series","tt123:1:3",[&](auto result,auto type) { cold.set_value(result.streams.size()==1 && type=="series"); },[&](auto){cold.set_value(false);});
+    assert(coldResult.wait_for(2s)==std::future_status::ready && coldResult.get());
+    assert(attempts==2 && brls::metadataTasks.size()==1);
+
+    // A cancelled request must not start playback or prevent selecting another item.
+    std::promise<bool> entered; auto enteredResult=entered.get_future();
+    std::atomic_bool staleCallback{false};
+    HTTP::transport=[&](const auto& url,auto cancel) {
+        if (url.find("blocked")!=std::string::npos) {
+            entered.set_value(true);
+            while (!cancel->load()) std::this_thread::sleep_for(1ms);
+            throw std::runtime_error("cancelled");
+        }
+        return playable();
+    };
+    auto cancelled=stremio::fetchStreams("movie","blocked",[&](auto,auto){staleCallback=true;},[&](auto){staleCallback=true;});
+    assert(enteredResult.wait_for(2s)==std::future_status::ready); cancelled->store(true);
+    std::promise<bool> next; auto nextResult=next.get_future();
+    stremio::fetchStreams("movie","tt456",[&](auto result,auto){next.set_value(!result.streams.empty());},[&](auto){next.set_value(false);});
+    assert(nextResult.wait_for(2s)==std::future_status::ready && nextResult.get());
+    assert(!staleCallback);
+
+    // Prefetch is isolated too: a slow upcoming episode cannot block an explicit play request.
+    std::promise<bool> prefetchEntered; auto prefetchStarted=prefetchEntered.get_future();
+    HTTP::transport=[&](const auto& url,auto cancel) {
+        if (url.find("prefetch")!=std::string::npos) {
+            prefetchEntered.set_value(true);
+            while (!cancel->load()) std::this_thread::sleep_for(1ms);
+            throw std::runtime_error("cancelled");
+        }
+        return playable();
+    };
+    auto prefetch=stremio::fetchStreams("series","prefetch",[](auto,auto){assert(false);},[](auto){assert(false);},true);
+    assert(prefetchStarted.wait_for(2s)==std::future_status::ready);
+    std::promise<bool> foreground; auto foregroundResult=foreground.get_future();
+    stremio::fetchStreams("movie","tt789",[&](auto,auto){foreground.set_value(true);},[&](auto){foreground.set_value(false);});
+    assert(foregroundResult.wait_for(2s)==std::future_status::ready && foregroundResult.get()); prefetch->store(true);
+    std::promise<bool> drained; auto drainedResult=drained.get_future();
+    stream_worker::prefetch().submit([&](auto){drained.set_value(true);});
+    assert(drainedResult.wait_for(2s)==std::future_status::ready);
+    std::cout<<"OK: cold startup bypasses metadata, DNS retry, cancellation and prefetch isolation\n";
+}

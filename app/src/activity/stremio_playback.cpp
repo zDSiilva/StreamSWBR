@@ -22,6 +22,7 @@ struct Session {
 Session session;
 unsigned generation=0;
 bool resuming=false;
+stream_worker::Cancel resumeCancel;
 std::string raw(const stremio::Stream& s) { return s.name+"\n"+s.title+"\n"+s.description; }
 void identify(ResumeEntry& key,const stremio::Stream& stream) {
     auto text=raw(stream);
@@ -80,7 +81,7 @@ void resolveNext() {
             session.sourcePending=false;
             session.resolved=true;
             if (session.waiting) { session.waiting=false; brls::Application::notify(error); VideoView::close(true); }
-        });
+        },true);
 }
 void discoverNext(unsigned ticket) {
     auto current=session.current;
@@ -130,12 +131,17 @@ void begin(ResumeEntry key,const stremio::Stream& stream,bool replace) {
 }
 }
 void play(ResumeEntry key,const stremio::Stream& stream) { resuming=false; begin(key,stream,false); }
+void interruptResume() {
+    if (!resuming) return;
+    if (resumeCancel) resumeCancel->store(true);
+    resuming=false; ++generation;
+}
 void resume(const ResumeEntry& key) {
-    if (resuming) return;
+    if (resumeCancel) resumeCancel->store(true);
     if (stremio::STREAM_ADDON.empty()) { brls::Application::notify("Selecione um complemento em Configurações."); return; }
     resuming=true; auto ticket=++generation;
     brls::Application::notify("Retomando reprodução…");
-    stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {
+    resumeCancel=stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {
         if (ticket!=generation) return;
         resuming=false;
         auto entry=key; entry.streamType=type;
@@ -146,9 +152,15 @@ void resume(const ResumeEntry& key) {
             brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,result.streams,entry)));
         } else brls::Application::notify("Nenhum vídeo disponível para retomar.");
     },[ticket](const std::string& error) { if (ticket==generation) { resuming=false; brls::Application::notify(error); } });
+    brls::delay(16000,[ticket]() {
+        if (ticket!=generation || !resuming) return;
+        if (resumeCancel) resumeCancel->store(true);
+        ++generation; resuming=false;
+        brls::Application::notify("A busca demorou para responder. Você pode tentar novamente ou escolher outro título.");
+    });
 }
 void attach(std::function<void(const std::string&,const std::string&)> replace) { session.replace=replace; }
-void cancel() { ++generation; session=Session{}; resuming=false; }
+void cancel() { if (resumeCancel) resumeCancel->store(true); ++generation; session=Session{}; resuming=false; }
 void failed() {
     auto key=session.current;
     session.active=false; session.waiting=false;
@@ -175,9 +187,9 @@ bool ended() {
 }
 std::string notice(double position,double duration) {
     if (!session.active) return "";
-    if (session.waiting) return "Próximo episódio\nPreparando reprodução…";
+    if (session.waiting) return "Próximo episódio\nPreparando…";
     if (!session.next || !playback_policy::countdown(position,duration)) return "";
     resolveNext();
-    return "Próximo episódio\nInicia automaticamente em "+std::to_string(int(std::ceil(duration-position)))+" s";
+    return "Próximo episódio\nComeça em "+std::to_string(int(std::ceil(duration-position)))+" s";
 }
 }

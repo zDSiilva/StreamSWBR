@@ -1,5 +1,6 @@
 #include "view/video_view.hpp"
 #include "activity/stremio_playback.hpp"
+#include "view/next_episode_notice.hpp"
 #include "utils/config.hpp"
 #include "utils/dialog.hpp"
 #include "utils/gesture.hpp"
@@ -38,13 +39,13 @@ static int getSeekRange(int current) {
 
 VideoView::VideoView() {
     this->inflateFromXMLRes("xml/view/video_view.xml");
-    nextEpisodeNotice=new brls::Label(); nextEpisodeNotice->setDimensions(360,88);
+    nextEpisodeNotice=new NextEpisodeNotice(); nextEpisodeNotice->setDimensions(320,82);
     nextEpisodeNotice->setPositionType(brls::PositionType::ABSOLUTE);
     nextEpisodeNotice->setPositionRight(28); nextEpisodeNotice->setPositionBottom(100);
     nextEpisodeNotice->setFontSize(19); nextEpisodeNotice->setSingleLine(false);
     nextEpisodeNotice->setHorizontalAlign(brls::HorizontalAlign::CENTER);
     nextEpisodeNotice->setVerticalAlign(brls::VerticalAlign::CENTER);
-    nextEpisodeNotice->setBackgroundColor(nvgRGBA(14,25,40,238)); nextEpisodeNotice->setCornerRadius(12);
+    nextEpisodeNotice->setBackgroundColor(nvgRGBA(0,0,0,0));
     nextEpisodeNotice->setTextColor(nvgRGB(190,245,218));
     nextEpisodeNotice->setVisibility(brls::Visibility::INVISIBLE); addView(nextEpisodeNotice);
     brls::Logger::debug("VideoView: created");

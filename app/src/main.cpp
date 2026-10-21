@@ -97,6 +97,7 @@ int main(int argc, char* argv[]) {
     }
 
     conf.initThemes();
+    brls::Application::getExitEvent()->subscribe([]() { stream_worker::shutdown(); });
     DownloadManager::instance().init();
 
     // Return directly to the desktop when closing the application (only for NX)

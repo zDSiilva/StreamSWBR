@@ -15,6 +15,7 @@
 #include "api/http.hpp"
 #include "api/portuguese_metadata.hpp"
 #include "activity/addon_profiles.hpp"
+#include "api/stream_worker.hpp"
 
 #include <thread>
 #include <chrono>
@@ -31,7 +32,7 @@ namespace stremio {
 using OnError = std::function<void(const std::string&)>;
 inline std::string streamError(const std::string& message) {
     if (message.find("resolve") != std::string::npos || message.find("hostname") != std::string::npos)
-        return "Não foi possível localizar o complemento. Confira o Wi-Fi e tente novamente. Se persistir, verifique o endereço em Configurações.";
+        return "Falha ao localizar o complemento. Tente novamente em instantes.";
     if (message.find("timed out") != std::string::npos || message.find("Timeout") != std::string::npos)
         return "O complemento demorou para responder. Tente novamente em alguns instantes.";
     return "O complemento não respondeu corretamente. Tente novamente ou selecione outro em Configurações.";
@@ -585,40 +586,40 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MetaResult, meta);
 // Stream addons disagree on which type kitsu ids live under (anime / series /
 // movie), so for kitsu ids each type is tried until one returns streams.
 // `then` also receives the type that worked (for resume bookkeeping).
-inline void fetchStreams(const std::string& type, const std::string& id,
-    std::function<void(StreamList, std::string)> then, OnError error) {
-    auto types = std::make_shared<std::vector<std::string>>();
-    types->push_back(type);
+inline stream_worker::Cancel fetchStreams(const std::string& type, const std::string& id,
+    std::function<void(StreamList, std::string)> then, OnError error, bool background=false) {
+    std::vector<std::string> types{type};
     if (id.rfind("kitsu:", 0) == 0)
         for (const char* t : {"series", "anime", "movie"})
-            if (t != type) types->push_back(t);
-
+            if (t != type) types.push_back(t);
     const auto addonBase = STREAM_ADDON;
-    auto attempt = std::make_shared<std::function<void(size_t)>>();
-    *attempt = [types, then, error, id, attempt, addonBase](size_t i) {
-        if (i >= types->size()) {
-            error("no streams found");
-            return;
+    auto& worker=background ? stream_worker::prefetch() : stream_worker::foreground();
+    return worker.submit([types,then,error,id,addonBase](stream_worker::Cancel cancel) {
+        std::string last="request failed";
+        const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(14);
+        for (const auto& t:types) {
+            for (int attempt=0;attempt<2;++attempt) {
+                if (cancel->load()) return;
+                auto remaining=std::chrono::duration_cast<std::chrono::milliseconds>(deadline-std::chrono::steady_clock::now()).count();
+                if (remaining<=0) break;
+                try {
+                    const auto url=addonBase+"/stream/"+t+"/"+id+".json";
+                    auto body=HTTP::get(url,HTTP::Timeout{long(std::min<int64_t>(6000,remaining))},cancel,HTTP::FreshDNS{});
+                    auto result=nlohmann::json::parse(body).get<StreamList>();
+                    if (!result.streams.empty() || t==types.back()) {
+                        brls::sync([then,result,t,cancel]() { if (!cancel->load()) then(result,t); }); return;
+                    }
+                    break;
+                } catch (const std::exception& e) {
+                    last=e.what();
+                    brls::Logger::warning("Playback lookup attempt {} failed: {}",attempt+1,last);
+                }
+                for (int pause=0;pause<3 && !cancel->load();++pause)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
         }
-        std::string t = (*types)[i];
-        getJSON<StreamList>(
-            [then, t, attempt, i, types](StreamList r) {
-                if (!r.streams.empty())
-                    then(std::move(r), t);
-                else if (i + 1 < types->size())
-                    (*attempt)(i + 1);
-                else
-                    then(std::move(r), t);  // let the caller show "No streams"
-            },
-            [attempt, i, error, types](const std::string& e) {
-                if (i + 1 < types->size())
-                    (*attempt)(i + 1);
-                else
-                    error(streamError(e));
-            },
-            addonBase + "/stream/" + t + "/" + id + ".json");
-    };
-    (*attempt)(0);
+        brls::sync([error,last,cancel]() { if (!cancel->load() && error) error(streamError(last)); });
+    });
 }
 
 }  // namespace stremio

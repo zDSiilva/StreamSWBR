@@ -22,6 +22,10 @@ jobs:
           -Ilibrary/borealis/library/include/borealis/extern \
           tests/portuguese_test.cpp app/src/api/portuguese_metadata.cpp -o /tmp/streamfin-pt-test
         /tmp/streamfin-pt-test
+        g++ -std=c++17 -pthread -Itests/stubs -Iapp/include \
+          -Ilibrary/borealis/library/include/borealis/extern \
+          tests/stream_startup_test.cpp -o /tmp/streamfin-startup-test
+        /tmp/streamfin-startup-test
   build-nx:
     needs: test
     runs-on: ubuntu-latest

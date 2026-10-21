@@ -126,9 +126,9 @@ HTTP::HTTP() : chunk(nullptr) {
     curl_easy_setopt(this->easy, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(this->easy, CURLOPT_SHARE, global.share);
     curl_easy_setopt(this->easy, CURLOPT_NOSIGNAL, 1L);
-#if LIBCURL_VERSION_NUM >= 0x080f00
-    // Do not cache failed DNS lookups during Wi-Fi reconnection.
-    curl_easy_setopt(this->easy, CURLOPT_DNS_CACHE_TIMEOUT, 0L);
+    curl_easy_setopt(this->easy, CURLOPT_DNS_CACHE_TIMEOUT, 60L);
+#ifdef __SWITCH__
+    curl_easy_setopt(this->easy, CURLOPT_IPRESOLVE, long(CURL_IPRESOLVE_V4));
 #endif
     // enable all supported built-in compressions
     curl_easy_setopt(this->easy, CURLOPT_ACCEPT_ENCODING, "");
@@ -146,6 +146,10 @@ HTTP::~HTTP() {
 }
 
 void HTTP::set_user_agent(const std::string& agent) { curl_easy_setopt(this->easy, CURLOPT_USERAGENT, agent.c_str()); }
+void HTTP::set_option(const FreshDNS&) {
+    // Playback retries must not inherit a failed lookup cached by background requests.
+    curl_easy_setopt(this->easy, CURLOPT_SHARE, static_cast<CURLSH*>(nullptr));
+}
 
 void HTTP::add_header(const std::string& header) { this->chunk = curl_slist_append(this->chunk, header.c_str()); }
 

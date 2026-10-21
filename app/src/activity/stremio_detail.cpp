@@ -10,6 +10,7 @@
 #include "activity/stremio_streams.hpp"
 #include "activity/stremio_favourites.hpp"
 #include "activity/stremio_resume.hpp"
+#include "activity/stremio_playback.hpp"
 #include "view/stremio_theme.hpp"
 #include "view/stremio_controls.hpp"
 #include "utils/image.hpp"
@@ -375,6 +376,7 @@ void StremioDetail::onAction() {
 
 void StremioDetail::openStreams() {
     if (this->fetching) return;  // ignore repeat presses while a request runs
+    stremio_playback::interruptResume();
     if (stremio::STREAM_ADDON.empty()) {
         brls::Application::notify("Configure o complemento primeiro (pressione − na tela inicial)");
         return;
