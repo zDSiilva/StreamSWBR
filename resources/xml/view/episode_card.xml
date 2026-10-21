@@ -1,17 +1,18 @@
 <brls:Box
-    highlightCornerRadius="8"
-    padding="5">
+    highlightCornerRadius="14"
+    backgroundColor="#1b2741"
+    padding="14">
 
     <brls:Box
         axis="row"
-        width="300"
+        width="240"
         alignItems="center">
         <brls:Box>
             <brls:Image
                 id="video/card/picture"
                 backgroundColor="@theme/color/grey_1"
                 scalingType="fill"
-                height="180"
+                height="140"
                 image="@res/img/video-card-bg.png" />
 
             <SVGImage
@@ -49,18 +50,19 @@
 
     <brls:Box
         axis="column"
-        marginLeft="20">
+        grow="1"
+        marginLeft="22">
         <brls:Label
             id="episode/card/name"
             margin="10"
-            singleLine="true"
-            fontSize="18" />
+            singleLine="false"
+            fontSize="22" />
 
         <TextBox
             id="episode/card/overview"
             grow="1"
-            fontSize="15"
-            maxRows="6"
+            fontSize="17"
+            maxRows="4"
             textColor="@theme/font/grey" />
     </brls:Box>
 

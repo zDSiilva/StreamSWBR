@@ -11,6 +11,7 @@
 #include "activity/stremio_favourites.hpp"
 #include "activity/stremio_resume.hpp"
 #include "view/stremio_theme.hpp"
+#include "view/stremio_controls.hpp"
 #include "utils/image.hpp"
 #include "api/stremio.hpp"
 
@@ -252,9 +253,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->labelDirector->setMarginTop(14);
     this->labelDirector->setVisibility(brls::Visibility::GONE);
     info->addView(this->labelDirector);
-    auto* guide = new brls::Label(); guide->setText("A  Assistir / episódios     X  Biblioteca     B  Voltar");
-    guide->setFontSize(15); guide->setHeight(28); guide->setShrink(0); guide->setMarginTop(18);
-    guide->setTextColor(COL_DIM); this->addView(guide);
+    stremio_theme::controls(this, {{"A","Assistir / episódios"},{"X","Biblioteca"},{"B","Voltar"}});
 
     // ---- Actions -----------------------------------------------------------
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {

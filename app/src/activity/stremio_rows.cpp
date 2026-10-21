@@ -1,3 +1,4 @@
+#include "view/stremio_controls.hpp"
 /*
     Home row customization -- implementation.
 */
@@ -215,10 +216,7 @@ StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
     this->head->setTextColor(stremio_theme::TEXT);
     this->head->setMarginBottom(14);
     this->addView(this->head);
-    auto* hint = new brls::Label();
-    hint->setText("A mostrar/ocultar · Y mover para cima · X mover para baixo · B salvar e voltar");
-    hint->setFontSize(17); hint->setTextColor(stremio_theme::TEXT_DIM); hint->setMarginBottom(18);
-    this->addView(hint);
+
 
     this->rows = rowcfg::load();
 
@@ -251,6 +249,7 @@ StremioRows::StremioRows(std::function<void()> onApply) : onApply(onApply) {
         dialog->open(); return true;
     });
     footer->addView(resetButton); this->addView(footer);
+    stremio_theme::controls(this, {{"A","Exibir/ocultar"},{"Y","Subir"},{"X","Descer"},{"B","Salvar e voltar"}});
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](brls::View*) {
         if (this->dirty) {

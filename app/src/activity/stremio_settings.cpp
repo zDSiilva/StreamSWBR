@@ -7,6 +7,7 @@
 #include "utils/config.hpp"
 #include "view/stremio_theme.hpp"
 #include "view/svg_image.hpp"
+#include "view/stremio_controls.hpp"
 
 using namespace brls::literals;
 namespace {
@@ -49,9 +50,6 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     heading->setText("Configurações"); heading->setFontSize(32); heading->setMarginBottom(18);
     heading->setHeight(44); heading->setShrink(0);
     heading->setTextColor(stremio_theme::TEXT); addView(heading);
-    auto* navigation = new brls::Label(); navigation->setText("↑ ↓ navegar · A selecionar · B voltar");
-    navigation->setFontSize(17); navigation->setHeight(28); navigation->setShrink(0);
-    navigation->setMarginBottom(14); navigation->setTextColor(stremio_theme::TEXT_DIM); addView(navigation);
     auto* shortcuts = new brls::Label();
     shortcuts->setText("Na tela inicial: X adiciona/remove da biblioteca · Y buscar · − complemento · + configurações");
     shortcuts->setFontSize(16); shortcuts->setHeight(28); shortcuts->setShrink(0);
@@ -63,10 +61,10 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     categories->registerClickAction([this](brls::View*) {
         brls::Application::pushActivity(new brls::Activity(new StremioRows([this]() { rowsChanged = true; }))); return true;
     });
-    const char* names[] = {"Informações em português · Automático", "Servidor preferido", "Complementos de vídeo", "Complemento de legendas"};
+    const char* names[] = {"Informações em português · Automático", "Fonte de vídeo preferida", "Complementos de vídeo", "Complemento de legendas"};
     auto prefs = stream_preferences::get();
     const std::string values[] = {prefs.tmdbToken.empty() ? "Ativado · sem conta ou token · dados via TMDB Addon / ElfHosted" : "Credencial pessoal configurada · A para usar o modo automático",
-        prefs.preferredServer.empty() ? "Nenhum · manter a ordem do complemento" : prefs.preferredServer,
+        (prefs.preferredServer.empty() ? "Automático" : prefs.preferredServer + (prefs.preferredServer == "Malfoy" ? " · Recomendado" : "")) + " · Prioriza a fonte; dublagem e idioma são escolhidos em Áudio preferido",
         stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Complemento ativo · A para gerenciar endereços salvos",
         stremio::SUBTITLES_ADDON.empty() ? "Opcional · configurar endereço" : "Endereço configurado · A para editar"};
     for (int field = 0; field < 4; ++field) {
@@ -104,6 +102,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
             brls::Application::notify("Cache de traduções limpo. Reabra os títulos para atualizar.");
         }); }); return true;
     });
+    stremio_theme::controls(this, {{"A","Selecionar"},{"B","Voltar"}});
     auto* about = new brls::Label();
     auto* attributionLogo = new SVGImage();
     attributionLogo->setDimensions(112, 48);
@@ -135,6 +134,21 @@ void StremioSettings::tmdbHelp(brls::Label* label) {
     dialog->open();
 }
 void StremioSettings::edit(int field, brls::Label* label) {
+    if (field == 1) {
+        const std::vector<std::string> sources = {"Malfoy", "Zunder", "FenixHub", ""};
+        const std::vector<std::string> labels = {"Malfoy · Recomendado", "Zunder", "FenixHub", "Automático · Ordem do complemento"};
+        auto current = stream_preferences::get().preferredServer;
+        auto it = std::find(sources.begin(),sources.end(),current);
+        int selected = it == sources.end() ? 3 : int(it-sources.begin());
+        auto* dropdown = new brls::Dropdown("Fonte preferida · quando disponível", labels,
+            [sources,label](int index) {
+                if (index < 0 || index >= int(sources.size())) return;
+                auto next=stream_preferences::get(); next.preferredServer=sources[index];
+                bool ok=stream_preferences::save(next); saved(ok);
+                if (ok) label->setText((next.preferredServer.empty() ? "Automático" : next.preferredServer + (index==0 ? " · Recomendado" : "")) + " · Prioriza a fonte; idioma em Áudio preferido");
+            },selected);
+        brls::Application::pushActivity(new brls::Activity(dropdown)); return;
+    }
     const char* titles[] = {"Token de leitura da API do TMDB", "Servidor preferido (vazio para nenhum)", "Endereço do complemento de vídeo", "Endereço do complemento de legendas"};
     auto prefs = stream_preferences::get();
     std::string initial = field == 0 ? "" : field == 1 ? prefs.preferredServer : field == 2 ? stremio::STREAM_ADDON : stremio::SUBTITLES_ADDON;

@@ -1,3 +1,4 @@
+#include "view/stremio_controls.hpp"
 /*
     Stremio library screen -- implementation.
 */
@@ -151,6 +152,7 @@ StremioLibrary::StremioLibrary() {
     this->recycler->estimatedRowHeight = 334;
     this->recycler->registerCell("Cell", FavCardCell::create);
     this->addView(this->recycler);
+    stremio_theme::controls(this, {{"A","Selecionar"},{"B","Voltar"}});
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
         brls::Application::popActivity();

@@ -1,3 +1,4 @@
+#include "view/stremio_controls.hpp"
 /*
     Anime browse screen -- implementation.
 */
@@ -151,6 +152,7 @@ StremioAnime::StremioAnime() {
     this->recycler->estimatedRowHeight = 334;
     this->recycler->registerCell("Cell", FavCardCell::create);
     this->addView(this->recycler);
+    stremio_theme::controls(this, {{"A","Selecionar"},{"B","Voltar"}});
     this->recycler->showSkeleton();
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {

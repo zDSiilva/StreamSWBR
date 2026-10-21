@@ -1,3 +1,4 @@
+#include "view/stremio_controls.hpp"
 /*
     Stremio browse screen -- implementation.
 
@@ -347,26 +348,33 @@ public:
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto e = this->list.at(index);
+        if (*pending) return;
+        if (e.streamType.empty()) e.streamType=e.streamId.find(':')==std::string::npos ? "movie" : "series";
         if (stremio::STREAM_ADDON.empty()) {
             brls::Application::notify("Configure o complemento primeiro (pressione −)");
             return;
         }
         brls::Application::notify("Buscando vídeos…");
+        *pending=true;
+        auto request=pending;
         stremio::fetchStreams(e.streamType, e.streamId,
-            [e](stremio::StreamList r, std::string) {
+            [e,request](stremio::StreamList r, std::string usedType) mutable {
+                *request=false;
                 if (r.streams.empty()) {
                     brls::Application::notify("Nenhum vídeo encontrado");
                     return;
                 }
+                e.streamType=usedType;
                 brls::Application::pushActivity(new brls::Activity(new StreamPicker(e.name, r.streams, e)));
             },
-            [](const std::string& err) { brls::Application::notify("Erro ao buscar vídeos: " + err); });
+            [request](const std::string& err) { *request=false; brls::Application::notify("Erro ao buscar vídeos: " + err); });
     }
 
     void clearData() override { this->list.clear(); }
 
 private:
     std::vector<ResumeEntry> list;
+    std::shared_ptr<bool> pending=std::make_shared<bool>(false);
 };
 
 }  // namespace
@@ -397,6 +405,7 @@ StremioHome::StremioHome() {
     scroll->setContentView(this->boxHome);
 
     this->addView(scroll);
+    stremio_theme::controls(this, {{"A","Abrir"},{"X","Biblioteca"},{"Y","Buscar"},{"+","Configurações"}});
 
     this->addTopBar();
 
@@ -464,11 +473,6 @@ void StremioHome::addTopBar() {
         auto* logo = new brls::Image(); logo->setDimensions(240,48); logo->setShrink(0);
         logo->setScalingType(brls::ImageScalingType::FIT);
         logo->setImageFromRes("icon/stream-swbr-horizontal.png"); identity->addView(logo);
-        auto* tagline = new brls::Label();
-        tagline->setText("Sua biblioteca de filmes e séries no Nintendo Switch");
-        tagline->setFontSize(14); tagline->setHeight(20); tagline->setShrink(0); tagline->setMarginTop(2);
-        tagline->setHorizontalAlign(brls::HorizontalAlign::LEFT); tagline->setSingleLine(true);
-        tagline->setAutoAnimate(false); tagline->setTextColor(nvgRGB(167,187,207)); identity->addView(tagline);
         bar->addView(identity);
         auto action = [bar](const std::string& resource, const std::function<void()>& callback) {
             auto* button = new brls::Box(); button->setDimensions(40,40); button->setShrink(0);

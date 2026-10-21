@@ -1,4 +1,6 @@
 #include "activity/stream_options.hpp"
+#include "activity/resume_policy.hpp"
+#include <limits>
 #include "activity/addon_profiles.hpp"
 #include "activity/stream_preferences.hpp"
 #include "api/portuguese_metadata.hpp"
@@ -9,6 +11,14 @@
 #include <iostream>
 
 int main() {
+    assert(resume_policy::seekable(120,1200));
+    assert(resume_policy::seekable(120,0));
+    assert(!resume_policy::seekable(1195,1200));
+    assert(!resume_policy::seekable(-20,1200));
+    assert(!resume_policy::seekable(std::numeric_limits<double>::infinity(),1200));
+    assert(!resume_policy::recordable(std::numeric_limits<double>::quiet_NaN(),1200));
+    assert(!resume_policy::recordable(120,-1));
+    assert(resume_policy::recordable(120,1200));
     using addon_profiles::State;
     auto fresh=State::fromJson(nlohmann::json::object());
     assert(fresh.entries.empty() && fresh.active.empty());

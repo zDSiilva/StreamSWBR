@@ -45,6 +45,7 @@ private:
 
     bool inited = false;
     bool hasCurrent = false;
+    bool loaded = false;
     ResumeEntry current;
     double pendingSeek = 0;
     long lastTick = 0;

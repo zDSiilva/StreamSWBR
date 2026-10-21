@@ -1,3 +1,4 @@
+#include "view/stremio_controls.hpp"
 /*
     Stremio stream picker -- implementation.
 
@@ -228,6 +229,7 @@ StreamPicker::StreamPicker(
     this->recycler->estimatedRowSpace = 10;
     this->recycler->registerCell("Cell", []() -> RecyclingGridItem* { return new StreamCell(); });
     this->addView(this->recycler);
+    stremio_theme::controls(this, {{"A","Reproduzir"},{"B","Voltar"},{"Y","Filtrar"},{"X","Detalhes"}});
 
     // Addons (e.g. AIOStreams) may return non-playable info entries alongside
     // real streams — "Removal Reasons", "no results", etc. — with no URL.

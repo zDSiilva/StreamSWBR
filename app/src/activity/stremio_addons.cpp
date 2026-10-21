@@ -2,6 +2,7 @@
 #include "api/stremio.hpp"
 #include "utils/config.hpp"
 #include "view/stremio_theme.hpp"
+#include "view/stremio_controls.hpp"
 using namespace brls::literals;
 
 StremioAddons::StremioAddons(std::function<void()> onClose) {
@@ -18,14 +19,13 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     auto* scroll=new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(true);
     list=new brls::Box(); list->setAxis(brls::Axis::COLUMN); list->setPaddingRight(16);
     scroll->setContentView(list); addView(scroll);
-    auto* later=new brls::Button(); later->setText("Configurar depois"); later->setShrink(0);
+    auto* later=new brls::Button(); later->setText(stremio::STREAM_ADDON.empty() ? "Voltar sem configurar" : "Concluir e voltar"); later->setShrink(0);
+    closeButton=later;
     later->setMarginTop(12);
     later->registerClickAction([onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     }); addView(later);
-    auto* hints=new brls::Label(); hints->setText("A  Opções do complemento     B  Voltar");
-    hints->setFontSize(16); hints->setHeight(30); hints->setShrink(0); hints->setMarginTop(12);
-    hints->setTextColor(stremio_theme::TEXT_DIM); addView(hints);
+    stremio_theme::controls(this, {{"A","Selecionar complemento"},{"B","Voltar"}});
     registerAction("hints/back"_i18n,brls::BUTTON_B,[onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     });
@@ -34,6 +34,7 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     brls::sync([ASYNC_TOKEN]() { ASYNC_RELEASE brls::Application::giveFocus(addButton); });
 }
 void StremioAddons::rebuild() {
+    closeButton->setText(stremio::STREAM_ADDON.empty() ? "Configurar depois" : "Concluir e voltar");
     list->clearViews(true);
     addButton->setText(stremio::VIDEO_ADDONS.entries.empty() ? "Adicionar outro endereço" : "+ Adicionar complemento");
     if (stremio::VIDEO_ADDONS.entries.empty()) {
@@ -57,9 +58,11 @@ void StremioAddons::rebuild() {
         auto* card=new brls::Box(); card->setAxis(brls::Axis::COLUMN); card->setFocusable(true);
         card->setShrink(0); card->setPadding(15,20,15,20); card->setMarginBottom(12); card->setCornerRadius(12);
         card->setBackgroundColor(active ? nvgRGB(28,79,74) : nvgRGB(28,40,62));
-        auto* name=new brls::Label(); name->setText((active ? "✓ ATIVO · " : "")+entry.name);
-        name->setFontSize(22); name->setHeight(32); name->setShrink(0); name->setWidthPercentage(100);
-        name->setSingleLine(true); name->setAutoAnimate(false); name->setTextColor(active ? nvgRGB(120,235,200) : stremio_theme::TEXT); card->addView(name);
+        auto* status=new brls::Box(); status->setAxis(brls::Axis::ROW); status->setShrink(0);
+        status->addView(new stremio_theme::RadioDot(active));
+        auto* name=new brls::Label(); name->setText((active ? "ATIVO · " : "")+entry.name);
+        name->setFontSize(22); name->setHeight(32); name->setShrink(1);
+        name->setSingleLine(true); name->setAutoAnimate(false); name->setTextColor(active ? nvgRGB(120,235,200) : stremio_theme::TEXT); name->setGrow(1); status->addView(name); card->addView(status);
         auto* detail=new brls::Label(); detail->setText(addon_profiles::host(entry.url)+" · A para selecionar ou editar");
         detail->setFontSize(16); detail->setHeight(26); detail->setShrink(0); detail->setWidthPercentage(100);
         detail->setTextColor(stremio_theme::TEXT_DIM); card->addView(detail);

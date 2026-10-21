@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <ctime>
+#include <cmath>
+#include "activity/resume_policy.hpp"
 
 ResumeTracker& ResumeTracker::instance() {
     static ResumeTracker t;
@@ -24,12 +26,15 @@ void ResumeTracker::init() {
         auto& mpv = MPVCore::instance();
         switch (e) {
         case MpvEventEnum::MPV_LOADED:
+            if (!this->hasCurrent) break;
+            this->loaded = true;
             // Resume: jump to the saved spot once the file is loaded.
-            if (this->hasCurrent && this->pendingSeek > 10) mpv.seek(this->pendingSeek, "absolute");
+            if (resume_policy::seekable(this->pendingSeek,mpv.duration))
+                mpv.seek(this->pendingSeek, "absolute");
             this->pendingSeek = 0;
             break;
         case MpvEventEnum::UPDATE_PROGRESS: {
-            if (!this->hasCurrent) break;
+            if (!this->hasCurrent || !this->loaded) break;
             long now = (long)time(nullptr);
             if (now - this->lastTick >= 20) {  // save at most every 20s
                 this->lastTick = now;
@@ -39,8 +44,16 @@ void ResumeTracker::init() {
         }
         case MpvEventEnum::MPV_STOP:
         case MpvEventEnum::END_OF_FILE:
+            // Ignore STOP from the previous file while a new file is loading.
+            if (!this->loaded) break;
             if (this->hasCurrent) this->onProgress(mpv.playback_time, mpv.duration, true);
             this->hasCurrent = false;
+            this->loaded = false;
+            break;
+        case MpvEventEnum::MPV_FILE_ERROR:
+            // A broken source must not overwrite the saved position.
+            this->hasCurrent = false;
+            this->loaded = false;
             break;
         default:
             break;
@@ -51,6 +64,7 @@ void ResumeTracker::init() {
 void ResumeTracker::setCurrent(const ResumeEntry& e) {
     this->current = e;
     this->hasCurrent = true;
+    this->loaded = false;
     this->lastTick = 0;
     this->pendingSeek = 0;
     for (auto& it : this->items)
@@ -61,7 +75,7 @@ void ResumeTracker::setCurrent(const ResumeEntry& e) {
 }
 
 void ResumeTracker::onProgress(double pos, double dur, bool fire) {
-    if (pos < 60) return;  // ignore < 1 minute watched
+    if (!resume_policy::recordable(pos,dur)) return;
     if (dur > 0 && pos / dur >= 0.92) {
         this->removeId(this->current.streamId);  // finished -> drop
     } else {

@@ -9,6 +9,7 @@ public:
 private:
     brls::Box* list = nullptr;
     brls::Button* addButton = nullptr;
+    brls::Button* closeButton = nullptr;
     void rebuild();
     void refresh();
     void actions(addon_profiles::Entry entry);

@@ -9,6 +9,7 @@
 #include "view/svg_image.hpp"
 #include "utils/image.hpp"
 #include "api/stremio.hpp"
+#include "view/stremio_controls.hpp"
 
 #include <map>
 
@@ -19,11 +20,16 @@ namespace {
 // ---- Season list cell (compact icon + name + episode count) --------------
 class SeasonCell : public RecyclingGridItem {
 public:
-    SeasonCell() { this->inflateFromXMLRes("xml/view/dir_entry.xml"); }
-
-    BRLS_BIND(SVGImage, icon, "file/icon");
-    BRLS_BIND(brls::Label, name, "file/name");
-    BRLS_BIND(brls::Label, detail, "file/misc");
+    SeasonCell() {
+        setAxis(brls::Axis::COLUMN); setFocusable(true); setPadding(18,24,18,24);
+        setCornerRadius(14); setBackgroundColor(nvgRGB(27,39,65));
+        name=new brls::Label(); name->setFontSize(24); name->setHeight(34);
+        name->setShrink(0); name->setTextColor(stremio_theme::TEXT); addView(name);
+        detail=new brls::Label(); detail->setFontSize(17); detail->setHeight(26);
+        detail->setShrink(0); detail->setTextColor(stremio_theme::TEXT_DIM); addView(detail);
+    }
+    brls::Label* name=nullptr;
+    brls::Label* detail=nullptr;
 };
 
 struct SeasonEntry {
@@ -41,10 +47,9 @@ public:
     RecyclingGridItem* cellForRow(RecyclingView* recycler, size_t index) override {
         SeasonCell* cell = dynamic_cast<SeasonCell*>(recycler->dequeueReusableCell("Cell"));
         auto& s = this->list.at(index);
-        cell->icon->setImageFromSVGRes("icon/ico-list.svg");
         cell->name->setText(s.label);
         cell->detail->setText(
-            s.episodes.size() == 1 ? "1 episódio" : fmt::format("{} episódios", s.episodes.size()));
+            fmt::format("{} episódios disponíveis · A para explorar", s.episodes.size()));
         return cell;
     }
 
@@ -82,7 +87,7 @@ public:
         EpisodeCell* cell = dynamic_cast<EpisodeCell*>(recycler->dequeueReusableCell("Cell"));
         auto& v = this->list.at(index);
 
-        cell->labelName->setText(fmt::format("E{} - {}", v.episode, v.name));
+        cell->labelName->setText(fmt::format("Episódio {} · {}", v.episode, v.name));
         // Prefix the air date (YYYY-MM-DD) to the overview when available.
         std::string date = v.released.size() >= 10 ? v.released.substr(0, 10) : "";
         std::string ov = v.overview;
@@ -148,10 +153,13 @@ void StremioSeries::init() {
     this->recycler->setGrow(1.0f);
     this->recycler->setScrollingIndicatorVisible(false);
     this->recycler->spanCount = 1;
-    this->recycler->estimatedRowHeight = 60;
-    this->recycler->estimatedRowSpace = 10;
+    auto* title=new brls::Label(); title->setText("Temporadas"); title->setFontSize(32);
+    title->setHeight(46); title->setShrink(0); title->setMarginBottom(16); addView(title);
+    this->recycler->estimatedRowHeight = 100;
+    this->recycler->estimatedRowSpace = 14;
     this->recycler->registerCell("Cell", []() -> RecyclingGridItem* { return new SeasonCell(); });
     this->addView(this->recycler);
+    stremio_theme::controls(this, {{"A","Abrir temporada"},{"B","Voltar"}});
     brls::sync([this]() { brls::Application::giveFocus(this->recycler); });
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
@@ -222,6 +230,10 @@ StremioSeason::StremioSeason(const std::string& seriesName, const std::string& t
     this->setBackgroundColor(brls::Application::getTheme()["brls/background"]);
     this->setPadding(20, 40, 20, 40);
 
+    auto* titleLabel=new brls::Label(); titleLabel->setText(seriesName+" · "+title);
+    titleLabel->setFontSize(28); titleLabel->setHeight(44); titleLabel->setShrink(0);
+    titleLabel->setSingleLine(true); titleLabel->setMarginBottom(14); addView(titleLabel);
+
     this->recycler = new RecyclingGrid();
     this->recycler->setGrow(1.0f);
     this->recycler->setScrollingIndicatorVisible(false);
@@ -230,6 +242,7 @@ StremioSeason::StremioSeason(const std::string& seriesName, const std::string& t
     this->recycler->estimatedRowSpace = 10;
     this->recycler->registerCell("Cell", []() -> RecyclingGridItem* { return new EpisodeCell(); });
     this->addView(this->recycler);
+    stremio_theme::controls(this, {{"A","Escolher vídeo"},{"B","Temporadas"}});
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
         brls::Application::popActivity();

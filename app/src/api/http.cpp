@@ -97,6 +97,15 @@ HTTP::HTTP() : chunk(nullptr) {
 #endif
             this->share = curl_share_init();
             curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+            curl_share_setopt(share, CURLSHOPT_USERDATA, &dns_lock);
+            curl_share_setopt(share, CURLSHOPT_LOCKFUNC,
+                +[](CURL*, curl_lock_data, curl_lock_access, void* context) {
+                    static_cast<std::mutex*>(context)->lock();
+                });
+            curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC,
+                +[](CURL*, curl_lock_data, void* context) {
+                    static_cast<std::mutex*>(context)->unlock();
+                });
         }
         ~Global() {
             curl_share_cleanup(this->share);
@@ -105,6 +114,7 @@ HTTP::HTTP() : chunk(nullptr) {
         }
         // Avoids initalization order problems
         std::mutex init_lock;
+        std::mutex dns_lock;
         CURLSH* share;
     } global;
 
@@ -115,6 +125,11 @@ HTTP::HTTP() : chunk(nullptr) {
     curl_easy_setopt(this->easy, CURLOPT_USERAGENT, user_agent.c_str());
     curl_easy_setopt(this->easy, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(this->easy, CURLOPT_SHARE, global.share);
+    curl_easy_setopt(this->easy, CURLOPT_NOSIGNAL, 1L);
+#if LIBCURL_VERSION_NUM >= 0x080f00
+    // Do not cache failed DNS lookups during Wi-Fi reconnection.
+    curl_easy_setopt(this->easy, CURLOPT_DNS_CACHE_TIMEOUT, 0L);
+#endif
     // enable all supported built-in compressions
     curl_easy_setopt(this->easy, CURLOPT_ACCEPT_ENCODING, "");
     curl_easy_setopt(this->easy, CURLOPT_VERBOSE, 0L);

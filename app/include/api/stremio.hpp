@@ -29,6 +29,13 @@
 namespace stremio {
 
 using OnError = std::function<void(const std::string&)>;
+inline std::string streamError(const std::string& message) {
+    if (message.find("resolve") != std::string::npos || message.find("hostname") != std::string::npos)
+        return "Não foi possível localizar o complemento. Confira o Wi-Fi e tente novamente. Se persistir, verifique o endereço em Configurações.";
+    if (message.find("timed out") != std::string::npos || message.find("Timeout") != std::string::npos)
+        return "O complemento demorou para responder. Tente novamente em alguns instantes.";
+    return "O complemento não respondeu corretamente. Tente novamente ou selecione outro em Configurações.";
+}
 
 // Cinemeta sometimes sends null (or wrong-typed) fields; read tolerantly so a
 // single null doesn't blow up the whole parse.
@@ -607,7 +614,7 @@ inline void fetchStreams(const std::string& type, const std::string& id,
                 if (i + 1 < types->size())
                     (*attempt)(i + 1);
                 else
-                    error(e);
+                    error(streamError(e));
             },
             addonBase + "/stream/" + t + "/" + id + ".json");
     };
