@@ -42,6 +42,7 @@ public:
     View* getNextFocus(brls::FocusDirection direction, View* currentView) override { return this; }
 
     void setTitie(const std::string& title);
+    void setStremioSession(bool enabled) { stremioSession=enabled; }
 
     void setList(const std::vector<std::string>& values, int index = -1);
 
@@ -69,6 +70,8 @@ public:
     static bool close(bool quit = false);
 
 private:
+    bool stremioSession=false;
+    brls::Label* nextEpisodeNotice=nullptr;
     /// OSD
     BRLS_BIND(brls::Label, titleLabel, "video/osd/title");
     BRLS_BIND(brls::Box, btnForward, "video/osd/forward");

@@ -36,7 +36,7 @@ void ResumeTracker::init() {
         case MpvEventEnum::UPDATE_PROGRESS: {
             if (!this->hasCurrent || !this->loaded) break;
             long now = (long)time(nullptr);
-            if (now - this->lastTick >= 20) {  // save at most every 20s
+            if (now - this->lastTick >= 5) {
                 this->lastTick = now;
                 this->onProgress(mpv.playback_time, mpv.duration, false);
             }

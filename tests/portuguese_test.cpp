@@ -1,5 +1,7 @@
 #include "activity/stream_options.hpp"
 #include "activity/resume_policy.hpp"
+#include "activity/resume_entry.hpp"
+#include "activity/playback_policy.hpp"
 #include <limits>
 #include "activity/addon_profiles.hpp"
 #include "activity/stream_preferences.hpp"
@@ -11,6 +13,23 @@
 #include <iostream>
 
 int main() {
+    using playback_policy::score;
+    assert(score("Malfoy","a.example","1080p","Dublado","Zunder","a.example","1080p","Dublado")==-1);
+    assert(score("Malfoy","old.example","1080p","Dublado","Malfoy","new.example","1080p","Dublado")>0);
+    assert(score("Fonte do complemento","a.example","720p","Dublado","Fonte do complemento","b.example","720p","Dublado")==-1);
+    assert(score("","","1080p","Dublado","Malfoy","a.example","1080p","Dublado")==-1);
+    assert(score("Malfoy","a","1080p","Dublado","Malfoy","b","1080p","Dublado") >
+           score("Malfoy","a","1080p","Dublado","Malfoy","a","720p","Legendado"));
+    assert(!playback_policy::countdown(79,100));
+    assert(playback_policy::countdown(80,100));
+    assert(playback_policy::countdown(100,100));
+    assert(!playback_policy::countdown(101,100));
+    assert(!playback_policy::countdown(0,0));
+    auto legacy=nlohmann::json{{"streamType","series"},{"streamId","tt123:1:3"},{"position",120}}.get<ResumeEntry>();
+    assert(legacy.sourceProvider.empty() && legacy.position==120);
+    legacy.sourceProvider="Malfoy"; legacy.sourceHost="video.example"; legacy.sourceAddon="https://addon.example";
+    auto persisted=nlohmann::json(legacy).get<ResumeEntry>();
+    assert(persisted.sourceProvider=="Malfoy" && persisted.sourceHost=="video.example" && persisted.position==120);
     assert(resume_policy::seekable(120,1200));
     assert(resume_policy::seekable(120,0));
     assert(!resume_policy::seekable(1195,1200));

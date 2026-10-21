@@ -1,4 +1,5 @@
 #include "view/stremio_controls.hpp"
+#include "activity/stremio_playback.hpp"
 /*
     Stremio browse screen -- implementation.
 
@@ -348,33 +349,14 @@ public:
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto e = this->list.at(index);
-        if (*pending) return;
-        if (e.streamType.empty()) e.streamType=e.streamId.find(':')==std::string::npos ? "movie" : "series";
-        if (stremio::STREAM_ADDON.empty()) {
-            brls::Application::notify("Configure o complemento primeiro (pressione −)");
-            return;
-        }
-        brls::Application::notify("Buscando vídeos…");
-        *pending=true;
-        auto request=pending;
-        stremio::fetchStreams(e.streamType, e.streamId,
-            [e,request](stremio::StreamList r, std::string usedType) mutable {
-                *request=false;
-                if (r.streams.empty()) {
-                    brls::Application::notify("Nenhum vídeo encontrado");
-                    return;
-                }
-                e.streamType=usedType;
-                brls::Application::pushActivity(new brls::Activity(new StreamPicker(e.name, r.streams, e)));
-            },
-            [request](const std::string& err) { *request=false; brls::Application::notify("Erro ao buscar vídeos: " + err); });
+        stremio_playback::resume(e);
+
     }
 
     void clearData() override { this->list.clear(); }
 
 private:
     std::vector<ResumeEntry> list;
-    std::shared_ptr<bool> pending=std::make_shared<bool>(false);
 };
 
 }  // namespace
@@ -405,7 +387,7 @@ StremioHome::StremioHome() {
     scroll->setContentView(this->boxHome);
 
     this->addView(scroll);
-    stremio_theme::controls(this, {{"A","Abrir"},{"X","Biblioteca"},{"Y","Buscar"},{"+","Configurações"}});
+    stremio_theme::controls(this, {{"A","Abrir"},{"X","Biblioteca"},{"Y","Buscar"},{"+","Configurações"}},true);
 
     this->addTopBar();
 

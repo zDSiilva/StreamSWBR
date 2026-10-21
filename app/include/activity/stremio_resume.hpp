@@ -10,18 +10,7 @@
 #include <borealis.hpp>
 #include "api/stremio.hpp"
 
-struct ResumeEntry {
-    std::string streamType;  // "movie" | "series"
-    std::string streamId;    // movie: ttID ; episode: ttID:season:episode
-    std::string name;        // display label
-    std::string poster;      // poster / episode thumbnail
-    double position = 0;     // seconds watched
-    double duration = 0;     // total seconds
-    long updated = 0;        // unix timestamp (ordering)
-    bool enriched = false;   // name/poster already refreshed from Cinemeta (English)
-};
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
-    ResumeEntry, streamType, streamId, name, poster, position, duration, updated, enriched);
+#include "activity/resume_entry.hpp"
 
 class ResumeTracker {
 public:

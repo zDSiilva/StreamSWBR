@@ -74,8 +74,16 @@ int main(int argc, char* argv[]) {
     // easier than typing a long URL on the on-screen keyboard.
     stremio::loadAddon(conf.configDir());
     stremio::importAddonFromFile(conf.configDir());
+    if (stremio::STREAM_ADDON.empty()) {
+        auto addons=stremio::VIDEO_ADDONS;
+        addons.add("FenixFlix","https://fenixflix.fenixhub.online/manifest/json",true);
+        stremio::setVideoAddons(conf.configDir(),addons);
+    }
 
     stream_preferences::load(conf.configDir());
+    if (stream_preferences::get().preferredServer.empty()) {
+        auto prefs=stream_preferences::get(); prefs.preferredServer="Malfoy"; stream_preferences::save(prefs);
+    }
     stream_preferences::importFile(conf.configDir());
     portuguese_metadata::configure(conf.configDir());
 

@@ -14,6 +14,7 @@
 #include "api/stremio.hpp"
 #include "activity/stream_preferences.hpp"
 #include "activity/stream_options.hpp"
+#include "activity/stremio_playback.hpp"
 #include "view/stremio_theme.hpp"
 
 #include <algorithm>
@@ -147,7 +148,9 @@ public:
         const std::string raw = s.name + "\n" + s.title + "\n" + s.description;
         auto favorite = stream_preferences::get().preferredServer;
         bool preferred = stream_options::preferred(raw, favorite);
-        cell->name->setText(stream_options::server(raw, favorite) + (preferred ? "  ★ Preferido" : ""));
+        cell->name->setText(stream_options::server(raw, favorite) + (preferred ? "  ★ Recomendado" : ""));
+        cell->name->setTextColor(preferred ? nvgRGB(110,235,184) : stremio_theme::TEXT);
+        cell->setBackgroundColor(preferred ? nvgRGB(20,65,58) : nvgRGBA(255,255,255,16));
         cell->detail->setText(stream_options::quality(raw) + "  ·  " + stream_options::audio(raw) +
             "  ·  Opção " + std::to_string(index + 1));
         cell->onDetails = [raw]() {
@@ -164,18 +167,8 @@ public:
             brls::Application::notify("Este vídeo não tem endereço de reprodução");
             return;
         }
-        // Remember what we're playing so the tracker can resume/record by id.
-        ResumeTracker::instance().setCurrent(this->key);
-        // Ask the subtitles addon (if configured) for subs for this title.
-        SubLoader::instance().prepare(this->key.streamType, this->key.streamId);
-        auto preferences = stream_preferences::get();
-        MPVCore::instance().command("set", "alang", preferences.audio.c_str());
-        MPVCore::instance().command("set", "slang", preferences.subtitles == "off" ? "" : preferences.subtitles.c_str());
-        MPVCore::instance().command("set", "sid", preferences.subtitles == "off" ? "no" : "auto");
-        // Show the media title (movie name / "Series · S1E5 · Episode") on the
-        // player OSD, not the raw stream/source name.
-        std::string title = this->key.name.empty() ? s.name : this->key.name;
-        RemoteView::play(s.url, title);
+        stremio_playback::play(this->key,s);
+
     }
 
     void clearData() override { this->list.clear(); }
@@ -186,6 +179,10 @@ private:
 };
 
 }  // namespace
+
+void stremio_playback::prepareSubtitles(const std::string& type,const std::string& id) {
+    SubLoader::instance().prepare(type,id);
+}
 
 StreamPicker::StreamPicker(
     const std::string& title, const std::vector<stremio::Stream>& streams, const ResumeEntry& resumeKey) {

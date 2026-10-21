@@ -25,7 +25,7 @@ public:
 
     void dismiss(std::function<void(void)> cb = [] {}) override;
 
-    static void play(const std::string& path, const std::string& name = "");
+    static void play(const std::string& path, const std::string& name = "", bool stremio = false);
 
 protected:
     void setContent(RecyclingGrid* view);

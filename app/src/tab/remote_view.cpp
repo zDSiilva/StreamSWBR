@@ -1,4 +1,5 @@
 #include "tab/remote_view.hpp"
+#include "activity/stremio_playback.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/svg_image.hpp"
 #include "view/video_view.hpp"
@@ -121,6 +122,13 @@ public:
     void setUrl(const std::string& path) {
         playSubscribeID = view->getPlayEvent()->subscribe([](int index) { return VideoView::close(true); });
         MPVCore::instance().setUrl(path);
+    }
+    void enableStremio() {
+        view->setStremioSession(true);
+        stremio_playback::attach([this](const std::string& url,const std::string& title) {
+            view->setTitie(title);
+            MPVCore::instance().setUrl(url);
+        });
     }
 
     void loadList() {
@@ -394,8 +402,9 @@ RecyclingGrid* RemoteView::newRecycler() {
     return view;
 }
 
-void RemoteView::play(const std::string& path, const std::string& name) {
+void RemoteView::play(const std::string& path, const std::string& name, bool stremio) {
     RemotePlayer* view = new RemotePlayer({remote::EntryType::VIDEO, name, path});
+    if (stremio) view->enableStremio();
     brls::Application::pushActivity(new brls::Activity(view), brls::TransitionAnimation::NONE);
     view->setUrl(path);
 }

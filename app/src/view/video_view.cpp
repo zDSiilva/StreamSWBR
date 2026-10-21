@@ -1,4 +1,5 @@
 #include "view/video_view.hpp"
+#include "activity/stremio_playback.hpp"
 #include "utils/config.hpp"
 #include "utils/dialog.hpp"
 #include "utils/gesture.hpp"
@@ -37,6 +38,15 @@ static int getSeekRange(int current) {
 
 VideoView::VideoView() {
     this->inflateFromXMLRes("xml/view/video_view.xml");
+    nextEpisodeNotice=new brls::Label(); nextEpisodeNotice->setDimensions(360,88);
+    nextEpisodeNotice->setPositionType(brls::PositionType::ABSOLUTE);
+    nextEpisodeNotice->setPositionRight(28); nextEpisodeNotice->setPositionBottom(100);
+    nextEpisodeNotice->setFontSize(19); nextEpisodeNotice->setSingleLine(false);
+    nextEpisodeNotice->setHorizontalAlign(brls::HorizontalAlign::CENTER);
+    nextEpisodeNotice->setVerticalAlign(brls::VerticalAlign::CENTER);
+    nextEpisodeNotice->setBackgroundColor(nvgRGBA(14,25,40,238)); nextEpisodeNotice->setCornerRadius(12);
+    nextEpisodeNotice->setTextColor(nvgRGB(190,245,218));
+    nextEpisodeNotice->setVisibility(brls::Visibility::INVISIBLE); addView(nextEpisodeNotice);
     brls::Logger::debug("VideoView: created");
     this->setHideHighlightBorder(true);
     this->setHideHighlightBackground(true);
@@ -314,6 +324,7 @@ VideoView::VideoView() {
 }
 
 VideoView::~VideoView() {
+    if (stremioSession) stremio_playback::cancel();
     brls::Logger::debug("trying delete VideoView...");
     this->unRegisterMpvEvent();
     disableDimming(false);
@@ -525,6 +536,14 @@ void VideoView::draw(NVGcontext* vg, float x, float y, float w, float h, brls::S
         }
         profile->frame(ctx);
     }
+    if (stremioSession) {
+        auto text=stremio_playback::notice(mpv.playback_time,mpv.duration);
+        nextEpisodeNotice->setVisibility(text.empty() ? brls::Visibility::INVISIBLE : brls::Visibility::VISIBLE);
+        if (!text.empty()) {
+            if (nextEpisodeNotice->getFullText()!=text) nextEpisodeNotice->setText(text);
+            nextEpisodeNotice->frame(ctx);
+        }
+    }
 }
 
 void VideoView::invalidate() { View::invalidate(); }
@@ -614,6 +633,7 @@ void VideoView::registerMpvEvent() {
             }
             break;
         case MpvEventEnum::END_OF_FILE:
+            if (stremioSession && stremio_playback::ended()) break;
             // 播放结束
             disableDimming(false);
             this->toggleIcon->setImageFromSVGRes("icon/ico-play.svg");
