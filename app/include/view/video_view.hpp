@@ -34,6 +34,7 @@ public:
     void draw(NVGcontext* vg, float x, float y, float w, float h, brls::Style style, brls::FrameContext* ctx) override;
 
     void invalidate() override;
+    brls::View* hitTest(brls::Point point) override;
 
     View* getDefaultFocus() override { return this->isOsdShown ? this->btnToggle : this; }
 

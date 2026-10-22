@@ -48,6 +48,12 @@ VideoView::VideoView() {
     nextEpisodeNotice->setBackgroundColor(nvgRGBA(0,0,0,0));
     nextEpisodeNotice->setTextColor(nvgRGB(190,245,218));
     nextEpisodeNotice->setVisibility(brls::Visibility::INVISIBLE); addView(nextEpisodeNotice);
+    nextEpisodeNotice->addGestureRecognizer(new brls::TapGestureRecognizer(
+        [this](brls::TapGestureStatus status,brls::Sound*) {
+            if (status.state!=brls::GestureState::END || !stremioSession || isOsdLock) return;
+            auto& player=MPVCore::instance();
+            stremio_playback::advanceNow(player.playback_time,player.duration);
+        }));
     brls::Logger::debug("VideoView: created");
     this->setHideHighlightBorder(true);
     this->setHideHighlightBackground(true);
@@ -548,6 +554,14 @@ void VideoView::draw(NVGcontext* vg, float x, float y, float w, float h, brls::S
 }
 
 void VideoView::invalidate() { View::invalidate(); }
+
+brls::View* VideoView::hitTest(brls::Point point) {
+    auto& player=MPVCore::instance();
+    if (stremioSession && !isOsdLock && nextEpisodeNotice->getVisibility()==brls::Visibility::VISIBLE &&
+        stremio_playback::canAdvanceNow(player.playback_time,player.duration) &&
+        nextEpisodeNotice->getFrame().pointInside(point)) return nextEpisodeNotice;
+    return brls::Box::hitTest(point);
+}
 
 void VideoView::onChildFocusGained(View* directChild, View* focusedView) {
     Box::onChildFocusGained(directChild, focusedView);

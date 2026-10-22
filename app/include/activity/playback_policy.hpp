@@ -10,5 +10,5 @@ inline int score(const std::string& provider,const std::string& host,const std::
     } else if (host.empty() || host!=candidateHost) return -1;
     return 1 + (host==candidateHost ? 1 : 0) + (quality==candidateQuality ? 4 : 0) + (audio==candidateAudio ? 8 : 0);
 }
-inline bool countdown(double position,double duration) { return std::isfinite(position) && std::isfinite(duration) && duration>20 && position>=duration-20 && position<=duration; }
+inline bool countdown(double position,double duration) { return std::isfinite(position) && std::isfinite(duration) && duration>30 && position>=duration-30 && position<=duration; }
 }

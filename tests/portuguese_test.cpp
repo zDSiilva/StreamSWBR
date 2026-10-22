@@ -35,8 +35,10 @@ int main() {
     assert(score("","","1080p","Dublado","Malfoy","a.example","1080p","Dublado")==-1);
     assert(score("Malfoy","a","1080p","Dublado","Malfoy","b","1080p","Dublado") >
            score("Malfoy","a","1080p","Dublado","Malfoy","a","720p","Legendado"));
-    assert(!playback_policy::countdown(79,100));
+    assert(!playback_policy::countdown(69,100));
+    assert(playback_policy::countdown(70,100));
     assert(playback_policy::countdown(80,100));
+    assert(!playback_policy::countdown(std::numeric_limits<double>::quiet_NaN(),100));
     assert(playback_policy::countdown(100,100));
     assert(!playback_policy::countdown(101,100));
     assert(!playback_policy::countdown(0,0));

@@ -8,6 +8,8 @@ void attach(std::function<void(const std::string&,const std::string&)> replace);
 void cancel();
 void prepareSubtitles(const std::string& type,const std::string& id);
 bool ended();
+bool canAdvanceNow(double position,double duration);
+bool advanceNow(double position,double duration);
 void failed();
 std::string notice(double position,double duration);
 }

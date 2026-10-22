@@ -178,6 +178,13 @@ void failed() {
     });
     dialog->addButton("Voltar",[]() { VideoView::close(true); }); dialog->open();
 }
+bool canAdvanceNow(double position,double duration) {
+    return session.active && session.next.has_value() && !session.waiting && playback_policy::countdown(position,duration);
+}
+bool advanceNow(double position,double duration) {
+    if (!canAdvanceNow(position,duration)) return false;
+    return ended();
+}
 bool ended() {
     if (!session.active || (!session.next && !session.metaPending)) return false;
     session.waiting=true;
