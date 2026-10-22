@@ -3,6 +3,8 @@
 #include "api/network_diagnostics.hpp"
 #ifdef __SWITCH__
 #include <switch.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <cerrno>
