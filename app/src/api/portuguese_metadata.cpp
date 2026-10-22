@@ -1,4 +1,5 @@
 #include "api/portuguese_metadata.hpp"
+#include "api/loading_activity.hpp"
 #include "api/http.hpp"
 #include "activity/stream_preferences.hpp"
 #include <borealis/core/thread.hpp>
@@ -180,7 +181,7 @@ void title(const std::string& id, const std::string& type, std::function<void(st
     if (!imdb(id)) { callback(""); return; }
     auto hit = cachedTitle(id, type, "");
     if (!hit.empty()) { callback(hit); return; }
-    if (!queue().push([id, type, callback]() {
+    if (!queue().push([id, type, callback, activity=loading_activity::track()]() {
         auto n = cachedTitle(id,type,"");
         if (n.empty()) n = name(stream_preferences::get().tmdbToken.empty() ? publicMeta(id,type) : find(id, type));
         if (stream_preferences::get().tmdbToken.empty()) rememberTitle(id,type,n);
@@ -254,7 +255,7 @@ void localizeDetail(Json& response) {
     }
 }
 void season(const std::string& id, int number, std::function<void(Json)> callback) {
-    queue().push([id, number, callback]() {
+    queue().push([id, number, callback, activity=loading_activity::track()]() {
         if (stream_preferences::get().tmdbToken.empty()) {
             auto show = publicMeta(id,"series");
             Json result{{"episodes", Json::array()}};
@@ -276,7 +277,7 @@ void season(const std::string& id, int number, std::function<void(Json)> callbac
     }, true);
 }
 void search(const std::string& query, std::function<void(Json)> callback) {
-    queue().push([query, callback]() {
+    queue().push([query, callback, activity=loading_activity::track()]() {
         std::string encoded;
         for (unsigned char c : query) {
             if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||

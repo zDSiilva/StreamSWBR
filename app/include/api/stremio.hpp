@@ -17,6 +17,7 @@
 #include "activity/addon_profiles.hpp"
 #include "api/stream_worker.hpp"
 #include "api/meta_cache.hpp"
+#include "api/loading_activity.hpp"
 
 #include <thread>
 #include <chrono>
@@ -226,8 +227,8 @@ inline void importAddonFromFile(const std::string& configDir) {
 // Generic async JSON GET (runs off the UI thread, calls back on it)
 // ---------------------------------------------------------------------------
 template <typename Result>
-inline void getJSON(std::function<void(Result)> then, OnError error, const std::string& url) {
-    brls::async([then, error, url]() {
+inline void getJSON(std::function<void(Result)> then, OnError error, const std::string& url,bool priority=false) {
+    auto task=[then, error, url, activity=loading_activity::track()]() {
         auto cached=meta_cache::read(url);
         try { if (!cached.is_null()) {
             portuguese_metadata::localizeDetail(cached);
@@ -261,7 +262,9 @@ inline void getJSON(std::function<void(Result)> then, OnError error, const std::
             auto result=previous.get<Result>(); brls::sync(std::bind(then,std::move(result))); return;
         } } catch (const std::exception&) {}
         if (error) brls::sync(std::bind(error, lastErr));
-    });
+    };
+    if (priority) stream_worker::details().submit([task](auto cancel) { if (!cancel->load()) task(); });
+    else brls::async(task);
 }
 
 // ---------------------------------------------------------------------------

@@ -189,7 +189,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     synopsisHead->setMarginTop(24); synopsisHead->setMarginBottom(8); synopsisHead->setTextColor(COL_TEXT);
     synopsisHead->setHorizontalAlign(brls::HorizontalAlign::LEFT); info->addView(synopsisHead);
     this->labelDesc = new brls::Label();
-    this->labelDesc->setText("Carregando…");
+    this->labelDesc->setText("Carregando sinopse…");
     this->labelDesc->setFontSize(20);
     this->labelDesc->setWidthPercentage(100); this->labelDesc->setSingleLine(false); this->labelDesc->setShrink(0);
     this->labelDesc->setHorizontalAlign(brls::HorizontalAlign::LEFT);
@@ -284,7 +284,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
             ASYNC_RELEASE
             this->labelDesc->setText("Nenhuma informação disponível.");
         },
-        metaBase + "/meta/" + item.type + "/" + item.id + ".json");
+        metaBase + "/meta/" + item.type + "/" + item.id + ".json",true);
 }
 
 // Release our reference on the shared poster texture (and abort any in-flight

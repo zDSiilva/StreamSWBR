@@ -4,7 +4,8 @@
 #include <iostream>
 using namespace std::chrono_literals;
 namespace portuguese_metadata {
-void localizeDetail(nlohmann::json&) { assert(false && "metadata queue must remain blocked"); }
+inline bool allowDetail=false;
+void localizeDetail(nlohmann::json&) { assert(allowDetail && "background metadata queue must remain blocked"); }
 void localizeCatalog(nlohmann::json&) { assert(false && "metadata queue must remain blocked"); }
 }
 static std::string playable() { return R"({"streams":[{"name":"Malfoy","url":"https://video.example/test.mp4"}]})"; }
@@ -61,5 +62,20 @@ int main() {
     std::promise<bool> drained; auto drainedResult=drained.get_future();
     stream_worker::prefetch().submit([&](auto){drained.set_value(true);});
     assert(drainedResult.wait_for(2s)==std::future_status::ready);
+    // User-selected details run even while home catalog work is still queued.
+    portuguese_metadata::allowDetail=true;
+    HTTP::transport=[](const auto&,auto) { return R"({"meta":{"id":"tt123","name":"Detalhes"}})"; };
+    std::promise<bool> detail; auto detailResult=detail.get_future();
+    stremio::getJSON<stremio::MetaResult>([&](auto r){detail.set_value(r.meta.name=="Detalhes");},
+        [&](auto){detail.set_value(false);},"https://catalog.example/meta/series/tt123.json",true);
+    assert(detailResult.wait_for(2s)==std::future_status::ready && detailResult.get());
+    assert(brls::metadataTasks.size()==1 && loading_activity::busy());
+    brls::metadataTasks.clear();
+    std::promise<bool> detailsDrained; auto detailsDone=detailsDrained.get_future();
+    stream_worker::details().submit([&](auto){detailsDrained.set_value(true);});
+    assert(detailsDone.wait_for(2s)==std::future_status::ready);
+    assert(!loading_activity::busy());
+    { auto activity=loading_activity::track(); auto copied=activity; activity.reset(); assert(loading_activity::busy()); }
+    assert(!loading_activity::busy());
     std::cout<<"OK: cold startup bypasses metadata, DNS retry, cancellation and prefetch isolation\n";
 }

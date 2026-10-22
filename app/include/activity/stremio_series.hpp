@@ -26,6 +26,7 @@ private:
         const std::string& name, const std::vector<stremio::Video>& videos, const std::string& background);
 
     RecyclingGrid* recycler = nullptr;
+    brls::Label* loadingHint = nullptr;
 };
 
 class StremioSeason : public brls::Box {

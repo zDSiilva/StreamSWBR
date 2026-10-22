@@ -157,6 +157,10 @@ void StremioSeries::init() {
     this->recycler->spanCount = 1;
     auto* title=new brls::Label(); title->setText("Temporadas"); title->setFontSize(32);
     title->setHeight(46); title->setShrink(0); title->setMarginBottom(16); addView(title);
+    loadingHint=new brls::Label(); loadingHint->setText("Carregando temporadas e episódios…");
+    loadingHint->setFontSize(14); loadingHint->setHeight(26); loadingHint->setShrink(0);
+    loadingHint->setTextColor(stremio_theme::TEXT_DIM); loadingHint->setVisibility(brls::Visibility::GONE);
+    addView(loadingHint);
     this->recycler->estimatedRowHeight = 100;
     this->recycler->estimatedRowSpace = 14;
     this->recycler->registerCell("Cell", []() -> RecyclingGridItem* { return new SeasonCell(); });
@@ -172,6 +176,7 @@ void StremioSeries::init() {
 
 void StremioSeries::setSeasons(
     const std::string& name, const std::vector<stremio::Video>& videos, const std::string& background) {
+    loadingHint->setVisibility(brls::Visibility::GONE);
     if (videos.empty()) {
         this->recycler->setError("Nenhum episódio encontrado");
         return;
@@ -197,6 +202,7 @@ StremioSeries::StremioSeries(const stremio::Meta& series) {
     brls::Logger::debug("StremioSeries: create {}", series.id);
     this->init();
     this->recycler->showSkeleton();
+    loadingHint->setVisibility(brls::Visibility::VISIBLE);
 
     std::string seriesName = series.name;
     ASYNC_RETAIN
@@ -209,9 +215,10 @@ StremioSeries::StremioSeries(const stremio::Meta& series) {
         },
         [ASYNC_TOKEN](const std::string& e) {
             ASYNC_RELEASE
+            this->loadingHint->setVisibility(brls::Visibility::GONE);
             this->recycler->setError(e);
         },
-        stremio::CINEMETA + "/meta/series/" + series.id + ".json");
+        stremio::CINEMETA + "/meta/series/" + series.id + ".json",true);
 }
 
 StremioSeries::StremioSeries(

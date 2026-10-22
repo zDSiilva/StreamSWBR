@@ -15,7 +15,10 @@ public:
     inline static bool authorized = true;
     inline static std::function<std::string(const std::string&,Cancel)> transport;
     static std::string get(const std::string& url,Timeout,Cancel cancel,FreshDNS) { return transport(url,cancel); }
-    static std::string get(const std::string& url,Timeout timeout) { return get(url,Header{},timeout); }
+    static std::string get(const std::string& url,Timeout timeout) {
+        if (transport && url.rfind("https://catalog.example",0)==0) return transport(url,std::make_shared<std::atomic_bool>(false));
+        return get(url,Header{},timeout);
+    }
     static std::string get(const std::string& url, const Header& headers, Timeout) {
         ++calls;
         if (url.rfind("https://tmdb.elfhosted.com/",0) == 0) {

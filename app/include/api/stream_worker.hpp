@@ -47,7 +47,9 @@ public:
 };
 inline Queue* activeForeground=nullptr;
 inline Queue* activePrefetch=nullptr;
+inline Queue* activeDetails=nullptr;
 inline Queue& foreground() { static Queue worker; activeForeground=&worker; return worker; }
 inline Queue& prefetch() { static Queue worker; activePrefetch=&worker; return worker; }
-inline void shutdown() { if (activeForeground) activeForeground->stop(); if (activePrefetch) activePrefetch->stop(); }
+inline Queue& details() { static Queue worker; activeDetails=&worker; return worker; }
+inline void shutdown() { if (activeForeground) activeForeground->stop(); if (activePrefetch) activePrefetch->stop(); if (activeDetails) activeDetails->stop(); }
 }

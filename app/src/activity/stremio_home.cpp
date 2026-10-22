@@ -1,4 +1,5 @@
 #include "view/stremio_controls.hpp"
+#include "view/catalog_loading.hpp"
 #include "activity/stremio_playback.hpp"
 /*
     Stremio browse screen -- implementation.
@@ -456,6 +457,8 @@ void StremioHome::addTopBar() {
         logo->setScalingType(brls::ImageScalingType::FIT);
         logo->setImageFromRes("icon/stream-swbr-horizontal.png"); identity->addView(logo);
         bar->addView(identity);
+        auto* loading=new CatalogLoading(); loading->setDimensions(210,24); loading->setShrink(0);
+        loading->setMarginRight(16); bar->addView(loading);
         auto action = [bar](const std::string& resource, const std::function<void()>& callback) {
             auto* button = new brls::Box(); button->setDimensions(40,40); button->setShrink(0);
             button->setMarginLeft(10); button->setAxis(brls::Axis::ROW);
