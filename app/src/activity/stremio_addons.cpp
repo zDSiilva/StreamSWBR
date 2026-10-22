@@ -92,7 +92,7 @@ void StremioAddons::actions(addon_profiles::Entry entry) {
         edit->addButton("Voltar",[]() {}); edit->open();
     });
     dialog->addButton("Excluir",[this,entry]() {
-        auto* confirm=new brls::Dialog("Excluir "+entry.name+"? A biblioteca e o histórico serão preservados."+(entry.url==stremio::STREAM_ADDON ? " Escolha outro complemento depois para assistir." : ""));
+        auto* confirm=new brls::Dialog("Excluir "+entry.name+"? Os favoritos e o histórico serão preservados."+(entry.url==stremio::STREAM_ADDON ? " Escolha outro complemento depois para assistir." : ""));
         confirm->addButton("Excluir",[this,entry]() { auto next=stremio::VIDEO_ADDONS; if (next.remove(entry.url)) commit(next); });
         confirm->addButton("Cancelar",[]() {}); confirm->open();
     }); dialog->open();

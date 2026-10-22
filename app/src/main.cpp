@@ -5,6 +5,9 @@
 #include "utils/thread.hpp"
 #include "api/analytics.hpp"
 #include "api/stremio.hpp"
+#include "api/network_diagnostics.hpp"
+#include "api/meta_cache.hpp"
+#include "activity/launch_policy.hpp"
 #include "activity/stream_preferences.hpp"
 #include "activity/stremio_home.hpp"
 
@@ -45,6 +48,7 @@ using namespace brls::literals;  // for _i18n
 
 int main(int argc, char* argv[]) {
     std::vector<std::string> items;
+    int ignoredLaunchArgs=0;
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
@@ -58,9 +62,9 @@ int main(int argc, char* argv[]) {
         } else if (std::strcmp(argv[i], "-version") == 0) {
             brls::Logger::info("{} {}", AppVersion::getDeviceName(), AppVersion::getCommit());
             return 0;
-        } else {
+        } else if (launch_policy::mediaArgument(argv[i])) {
             items.push_back(argv[i]);
-        }
+        } else ++ignoredLaunchArgs;
     }
 
     std::setlocale(LC_ALL, "C.UTF-8");
@@ -69,6 +73,9 @@ int main(int argc, char* argv[]) {
     if (!conf.init()) {
         return 0;
     }
+    network_diagnostics::configure(conf.configDir());
+    network_diagnostics::record("startup","",argc,ignoredLaunchArgs);
+    meta_cache::configure(conf.configDir());
     // Load the user's stream addon URL (set on first launch via the UI), then
     // let a streamfin-addon.txt dropped on the SD card set/override it — much
     // easier than typing a long URL on the on-screen keyboard.

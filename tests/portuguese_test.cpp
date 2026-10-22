@@ -7,12 +7,27 @@
 #include "activity/stream_preferences.hpp"
 #include "api/portuguese_metadata.hpp"
 #include "api/http.hpp"
+#include "api/meta_cache.hpp"
+#include "api/resolver_cache.hpp"
+#include "activity/launch_policy.hpp"
 #include <cassert>
 #include <filesystem>
 #include <future>
 #include <iostream>
 
 int main() {
+    assert(!launch_policy::mediaArgument("sdmc:/switch/Stream-SWBR/Stream-SWBR.nro"));
+    assert(!launch_policy::mediaArgument("--forwarder"));
+    assert(launch_policy::mediaArgument("sdmc:/video.mkv"));
+    assert(launch_policy::mediaArgument("https://example.com/play?id=1"));
+    resolver_cache::Cache dns;
+    int resolutions=0;
+    assert(dns.get("example.com",[&](){++resolutions;return std::string{};}).empty());
+    assert(dns.get("example.com",[&](){++resolutions;return std::string{"192.0.2.1"};})=="192.0.2.1");
+    assert(dns.get("example.com",[&](){++resolutions;return std::string{};})=="192.0.2.1");
+    assert(resolutions==2);
+    dns.invalidate("example.com");
+    assert(dns.get("example.com",[&](){++resolutions;return std::string{"192.0.2.2"};})=="192.0.2.2");
     using playback_policy::score;
     assert(score("Malfoy","a.example","1080p","Dublado","Zunder","a.example","1080p","Dublado")==-1);
     assert(score("Malfoy","old.example","1080p","Dublado","Malfoy","new.example","1080p","Dublado")>0);
@@ -166,6 +181,22 @@ int main() {
     assert(movie["meta"]["id"] == "tt1375666");
     assert(movie["meta"]["description"] == "Sinopse em português indisponível no momento. Tente novamente mais tarde.");
     portuguese_metadata::clearCache();
+    { std::ofstream out(directory / "metadata-pt/public-movie-tt555.json");
+      out<<nlohmann::json{{"until",0},{"data",{{"meta",{{"name","Título preservado"},{"description","Sinopse preservada."}}}}}}; }
+    nlohmann::json staleMovie={{"meta",{{"id","tt555"},{"type","movie"},{"name","Original"}}}};
+    portuguese_metadata::localizeDetail(staleMovie);
+    assert(staleMovie["meta"]["description"]=="Sinopse preservada.");
+    meta_cache::configure(directory.string());
+    std::string metaUrl="https://v3-cinemeta.strem.io/meta/series/tt123.json";
+    nlohmann::json raw={{"meta",{{"id","tt123"},{"videos",nlohmann::json::array({{{"id","tt123:1:4"}}})}}}};
+    meta_cache::write(metaUrl,raw);
+    assert(meta_cache::read(metaUrl)==raw);
+    meta_cache::write(metaUrl,{{"meta",nlohmann::json::object()}});
+    assert(meta_cache::read(metaUrl)==raw);
+    assert(!meta_cache::eligible("https://provider.example/stream/movie/tt123.json"));
+    { std::ofstream out(meta_cache::path(metaUrl)); out<<nlohmann::json{{"until",0},{"data",raw}}; }
+    assert(meta_cache::read(metaUrl).is_null());
+    assert(meta_cache::read(metaUrl,true)==raw);
     std::filesystem::remove_all(directory);
     std::cout << "OK: classification, settings, Portuguese metadata, episodes, cache and failure fallback\n";
 }

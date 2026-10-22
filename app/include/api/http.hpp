@@ -104,6 +104,7 @@ private:
     static int easy_progress_cb(
         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
     int perform(std::ostream* body);
+    void prepare_dns(const std::string& url);
 
     void add_header(const std::string& header);
     void set_option(const Header& hs);
@@ -127,6 +128,7 @@ private:
 
     void* easy;
     struct curl_slist* chunk;
+    struct curl_slist* resolvedHosts=nullptr;
     Cancel is_cancel;
     Progress event;
 };

@@ -16,6 +16,7 @@
 #include "api/portuguese_metadata.hpp"
 #include "activity/addon_profiles.hpp"
 #include "api/stream_worker.hpp"
+#include "api/meta_cache.hpp"
 
 #include <thread>
 #include <chrono>
@@ -227,6 +228,11 @@ inline void importAddonFromFile(const std::string& configDir) {
 template <typename Result>
 inline void getJSON(std::function<void(Result)> then, OnError error, const std::string& url) {
     brls::async([then, error, url]() {
+        auto cached=meta_cache::read(url);
+        try { if (!cached.is_null()) {
+            portuguese_metadata::localizeDetail(cached);
+            auto result=cached.get<Result>(); brls::sync(std::bind(then,std::move(result))); return;
+        } } catch (const std::exception&) {}
         std::string lastErr = "request failed";
         // Retry a few times to ride out cold-start DNS / transient failures.
         for (int attempt = 0; attempt < 3; ++attempt) {
@@ -236,6 +242,7 @@ inline void getJSON(std::function<void(Result)> then, OnError error, const std::
                     lastErr = "empty response";
                 } else {
                     auto data = nlohmann::json::parse(resp);
+                    meta_cache::write(url,data);
                     // Full metadata is localized independently of the playback addon.
                     if (data.contains("meta")) portuguese_metadata::localizeDetail(data);
                     if (data.contains("metas")) portuguese_metadata::localizeCatalog(data);
@@ -248,6 +255,11 @@ inline void getJSON(std::function<void(Result)> then, OnError error, const std::
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+        auto previous=meta_cache::read(url,true);
+        try { if (!previous.is_null()) {
+            portuguese_metadata::localizeDetail(previous);
+            auto result=previous.get<Result>(); brls::sync(std::bind(then,std::move(result))); return;
+        } } catch (const std::exception&) {}
         if (error) brls::sync(std::bind(error, lastErr));
     });
 }
@@ -589,14 +601,25 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MetaResult, meta);
 template<class Result>
 inline stream_worker::Cancel playbackMeta(std::function<void(Result)> then,OnError error,const std::string& url) {
     return stream_worker::prefetch().submit([then,error,url](stream_worker::Cancel cancel) {
+        auto cached=meta_cache::read(url);
+        try { if (!cached.is_null()) {
+            auto result=cached.get<Result>();
+            brls::sync([then,result,cancel]() { if (!cancel->load()) then(result); }); return;
+        } } catch (const std::exception&) {}
         std::string last="request failed";
         for (int attempt=0;attempt<2 && !cancel->load();++attempt) {
             try {
                 auto body=HTTP::get(url,HTTP::Timeout{6000},cancel,HTTP::FreshDNS{});
-                auto result=nlohmann::json::parse(body).get<Result>();
+                auto data=nlohmann::json::parse(body); meta_cache::write(url,data);
+                auto result=data.get<Result>();
                 brls::sync([then,result,cancel]() { if (!cancel->load()) then(result); }); return;
             } catch (const std::exception& e) { last=e.what(); }
         }
+        auto previous=meta_cache::read(url,true);
+        try { if (!previous.is_null()) {
+            auto result=previous.get<Result>();
+            brls::sync([then,result,cancel]() { if (!cancel->load()) then(result); }); return;
+        } } catch (const std::exception&) {}
         brls::sync([error,last,cancel]() { if (!cancel->load() && error) error(streamError(last)); });
     });
 }

@@ -2,6 +2,8 @@
 #include "utils/config.hpp"
 #include <borealis/core/logger.hpp>
 #include <curl/curl.h>
+#include "api/switch_resolver.hpp"
+#include "api/network_diagnostics.hpp"
 #if defined(BOREALIS_USE_GXM)
 #include <mbedtls/platform.h>
 #include <psp2/gxm.h>
@@ -143,6 +145,27 @@ HTTP::HTTP() : chunk(nullptr) {
 HTTP::~HTTP() {
     if (this->chunk != nullptr) curl_slist_free_all(this->chunk);
     if (this->easy != nullptr) curl_easy_cleanup(this->easy);
+    if (resolvedHosts) curl_slist_free_all(resolvedHosts);
+}
+void HTTP::prepare_dns(const std::string& url) {
+#ifdef __SWITCH__
+    curl_easy_setopt(easy,CURLOPT_RESOLVE,static_cast<curl_slist*>(nullptr));
+    if (resolvedHosts) { curl_slist_free_all(resolvedHosts); resolvedHosts=nullptr; }
+    if (PROXY_STATUS) return;
+    CURLU* parsed=curl_url(); if (!parsed) return;
+    char* host=nullptr; char* port=nullptr;
+    if (curl_url_set(parsed,CURLUPART_URL,url.c_str(),0)==CURLUE_OK &&
+        curl_url_get(parsed,CURLUPART_HOST,&host,0)==CURLUE_OK &&
+        curl_url_get(parsed,CURLUPART_PORT,&port,CURLU_DEFAULT_PORT)==CURLUE_OK) {
+        auto addresses=switch_resolver::resolve(host);
+        if (!addresses.empty()) {
+            auto rule="+"+std::string(host)+":"+port+":"+addresses;
+            auto* updated=curl_slist_append(resolvedHosts,rule.c_str());
+            if (updated) { resolvedHosts=updated; curl_easy_setopt(easy,CURLOPT_RESOLVE,resolvedHosts); }
+        }
+    }
+    if (host) curl_free(host); if (port) curl_free(port); curl_url_cleanup(parsed);
+#endif
 }
 
 void HTTP::set_user_agent(const std::string& agent) { curl_easy_setopt(this->easy, CURLOPT_USERAGENT, agent.c_str()); }
@@ -227,7 +250,19 @@ int HTTP::perform(std::ostream* body) {
     curl_easy_setopt(this->easy, CURLOPT_PROXY, PROXY_STATUS ? PROXY.c_str() : nullptr);
 
     CURLcode res = curl_easy_perform(this->easy);
-    if (res != CURLE_OK) throw curl_error(res);
+    if (res != CURLE_OK) {
+        char* effective=nullptr; curl_easy_getinfo(easy,CURLINFO_EFFECTIVE_URL,&effective);
+        std::string host;
+        if (effective) {
+            CURLU* parsed=curl_url(); char* value=nullptr;
+            if (parsed && curl_url_set(parsed,CURLUPART_URL,effective,0)==CURLUE_OK &&
+                curl_url_get(parsed,CURLUPART_HOST,&value,0)==CURLUE_OK) host=value;
+            if (value) curl_free(value); if (parsed) curl_url_cleanup(parsed);
+        }
+        network_diagnostics::record("http",host,int(res));
+        if (res==CURLE_COULDNT_CONNECT || res==CURLE_OPERATION_TIMEDOUT) switch_resolver::invalidate(host);
+        throw curl_error(res);
+    }
 
     long status_code = 0;
     curl_easy_getinfo(this->easy, CURLINFO_RESPONSE_CODE, &status_code);
@@ -248,6 +283,7 @@ std::string HTTP::encode_form(const Form& form) {
 }
 
 void HTTP::_get(const std::string& url, std::ostream* out) {
+    prepare_dns(url);
     curl_easy_setopt(this->easy, CURLOPT_URL, url.c_str());
     curl_easy_setopt(this->easy, CURLOPT_HTTPGET, 1L);
     int code = this->perform(out);

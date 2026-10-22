@@ -184,7 +184,7 @@ void openCatalogGrid(const std::string& title, const std::vector<stremio::Meta>&
     brls::Application::pushActivity(new brls::Activity(new CatalogGrid(title, list)));
 }
 
-// Home "Biblioteca" row: the newest few saved titles plus a final "Ver tudo" card
+// Home "Favoritos" row: the newest few saved titles plus a final "Ver tudo" card
 // that opens the full library grid.
 class LibraryRowSource : public RecyclingGridDataSource {
 public:
@@ -199,7 +199,7 @@ public:
         cell->labelRating->setVisibility(brls::Visibility::INVISIBLE);
 
         if (index == this->list.size()) {  // the See-all card
-            cell->staticTitle("Biblioteca");
+            cell->staticTitle("Favoritos");
             cell->labelExt->setText(this->list.empty() ? "Nenhum título salvo" : "Ver tudo");
             cell->labelExt->setVisibility(brls::Visibility::VISIBLE);
             cell->badgeFavorite->setVisibility(brls::Visibility::INVISIBLE);
@@ -387,7 +387,7 @@ StremioHome::StremioHome() {
     scroll->setContentView(this->boxHome);
 
     this->addView(scroll);
-    stremio_theme::controls(this, {{"A","Abrir"},{"X","Biblioteca"},{"Y","Buscar"},{"+","Configurações"}},true);
+    stremio_theme::controls(this, {{"A","Abrir"},{"X","Favoritos"},{"Y","Buscar"},{"+","Configurações"}},true);
 
     this->addTopBar();
 
@@ -610,7 +610,7 @@ void StremioHome::addRow(const std::string& title, const std::string& url) {
 
 void StremioHome::addFavouritesRow() {
     this->favHeader = new brls::Label();
-    styleRowHeader(this->favHeader, "Biblioteca");
+    styleRowHeader(this->favHeader, "Favoritos");
     this->boxHome->addView(this->favHeader);
 
     this->favRec = new HRecyclerFrame();

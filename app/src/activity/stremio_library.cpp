@@ -124,7 +124,7 @@ StremioLibrary::StremioLibrary() {
                 this->lblSearch->setText(text.empty() ? "🔍 Buscar" : "🔍 " + text);
                 this->rebuild();
             },
-            "Buscar na biblioteca", "Deixe vazio para limpar o filtro", 64, this->filter, 0);
+            "Buscar nos favoritos", "Deixe vazio para limpar o filtro", 64, this->filter, 0);
     };
     this->btnSearch->registerClickAction([doSearch](brls::View*) {
         doSearch();
@@ -214,9 +214,9 @@ void StremioLibrary::rebuild() {
         break;  // recent = insertion order, already reversed
     }
 
-    this->headline->setText(fmt::format("Biblioteca · {} título{}", list.size(), list.size() == 1 ? "" : "s"));
+    this->headline->setText(fmt::format("Favoritos · {} título{}", list.size(), list.size() == 1 ? "" : "s"));
     if (list.empty()) {
-        this->recycler->setEmpty(this->filter.empty() ? "Biblioteca vazia — pressione X em um pôster para adicionar"
+        this->recycler->setEmpty(this->filter.empty() ? "Favoritos vazios — pressione X em um pôster para adicionar"
                                                       : "Nenhum título corresponde à busca");
     } else {
         this->recycler->setDataSource(new LibraryGridSource(std::move(list)));

@@ -52,7 +52,7 @@ void rememberTitle(const std::string& id, const std::string& type, const std::st
     memory[key] = record;
     try { std::ofstream out(root + "/" + key + ".json"); if (out) out << record.dump(); } catch (...) {}
 }
-Json cached(const std::string& key) {
+Json cached(const std::string& key,bool allowStale=false) {
     std::lock_guard<std::mutex> lock(cacheMutex);
     Json record;
     auto it = memory.find(key);
@@ -61,7 +61,7 @@ Json cached(const std::string& key) {
         try { std::ifstream in(root + "/" + key + ".json"); if (in) in >> record; } catch (...) {}
     }
     if (!record.is_object() || !record.contains("until") || !record["until"].is_number_integer() ||
-        record["until"].get<int64_t>() < std::time(nullptr) || !record.contains("data") || !record["data"].is_object()) return nullptr;
+        (!allowStale && record["until"].get<int64_t>() < std::time(nullptr)) || !record.contains("data") || !record["data"].is_object() || record["data"].empty()) return nullptr;
     memory[key] = record;
     return record.value("data", Json::object());
 }
@@ -74,9 +74,10 @@ Json request(const std::string& key, const std::string& url, const HTTP::Header&
     std::lock_guard<std::mutex> network(requestMutex);
     hit = cached(key);
     if (!hit.is_null()) return hit;
+    auto previous=cached(key,true);
     const bool isPublic = url.rfind(publicBase,0) == 0;
     if (isPublic) {
-        if (std::chrono::steady_clock::now() < retryPublicAfter) return Json::object();
+        if (std::chrono::steady_clock::now() < retryPublicAfter) return previous.is_null() ? Json::object() : previous;
         // Keep first-time carousel loading below 80 requests/minute per console.
         std::this_thread::sleep_until(nextPublicRequest);
         nextPublicRequest = std::chrono::steady_clock::now() + std::chrono::milliseconds(750);
@@ -86,8 +87,11 @@ Json request(const std::string& key, const std::string& url, const HTTP::Header&
         auto body = HTTP::get(url, headers, HTTP::Timeout{6000});
         data = Json::parse(body);
         if (!data.is_object() || data.contains("success")) data = Json::object();
+        if (isPublic && data.contains("meta") && (!data["meta"].is_object() || data["meta"].empty())) data=Json::object();
     } catch (...) { /* Metadata failure must never prevent playback. */ }
     if (isPublic && data.empty()) retryPublicAfter = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    // A transient error must not erase a valid synopsis or poison the next attempt.
+    if (data.empty()) return previous.is_null() ? Json::object() : previous;
     Json record{{"until", int64_t(std::time(nullptr)) + (data.empty() ? 300 : 604800)}, {"data", data}};
     {
         std::lock_guard<std::mutex> lock(cacheMutex);

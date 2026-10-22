@@ -254,7 +254,7 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     this->labelDirector->setMarginTop(14);
     this->labelDirector->setVisibility(brls::Visibility::GONE);
     info->addView(this->labelDirector);
-    stremio_theme::controls(this, {{"A","Assistir / episódios"},{"X","Biblioteca"},{"B","Voltar"}});
+    stremio_theme::controls(this, {{"A","Assistir / episódios"},{"X","Favoritos"},{"B","Voltar"}});
 
     // ---- Actions -----------------------------------------------------------
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
@@ -263,9 +263,9 @@ StremioDetail::StremioDetail(const stremio::Meta& item) : item(item) {
     });
 
     // X toggles library membership here too, matching the poster grids.
-    this->registerAction("Biblioteca", brls::BUTTON_X, [this](brls::View*) {
+    this->registerAction("Favoritos", brls::BUTTON_X, [this](brls::View*) {
         bool nowFav = Favourites::instance().toggle(this->item);
-        brls::Application::notify(nowFav ? "Adicionado à biblioteca" : "Removido da biblioteca");
+        brls::Application::notify(nowFav ? "Adicionado aos favoritos" : "Removido dos favoritos");
         return true;
     });
 

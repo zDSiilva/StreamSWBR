@@ -51,7 +51,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     heading->setHeight(44); heading->setShrink(0);
     heading->setTextColor(stremio_theme::TEXT); addView(heading);
     auto* shortcuts = new brls::Label();
-    shortcuts->setText("Na tela inicial: X adiciona/remove da biblioteca · Y buscar · − complemento · + configurações");
+    shortcuts->setText("Na tela inicial: X adiciona/remove dos favoritos · Y buscar · − complemento · + configurações");
     shortcuts->setFontSize(16); shortcuts->setHeight(28); shortcuts->setShrink(0);
     shortcuts->setMarginBottom(16); shortcuts->setTextColor(stremio_theme::TEXT_DIM); addView(shortcuts);
     auto* scroll = new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(false);
@@ -96,7 +96,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
         if (ok) subtitlesLabel->setText(next.subtitles == "off" ? "Desativadas ao iniciar" : "Português, quando disponível");
         return true;
     });
-    auto* cache = setting(content, "Atualizar informações em português", "Limpar o cache de traduções; biblioteca e histórico são preservados", nullptr);
+    auto* cache = setting(content, "Atualizar informações em português", "Limpar o cache de traduções; favoritos e histórico são preservados", nullptr);
     cache->registerClickAction([](brls::View*) {
         brls::async([]() { portuguese_metadata::clearCache(); brls::sync([]() {
             brls::Application::notify("Cache de traduções limpo. Reabra os títulos para atualizar.");
