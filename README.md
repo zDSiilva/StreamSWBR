@@ -13,7 +13,7 @@ Stream SWBR é um aplicativo homebrew para Nintendo Switch que reúne filmes, s�
 - **Interface em português**, com títulos, sinopses e informações dos episódios conforme a disponibilidade das traduções.
 - **Continuar assistindo**, com progresso salvo e retomada pela última fonte utilizada.
 - **Favoritos**, para guardar seus filmes e séries.
-- **Próximo episódio automático**, com aviso nos últimos 20 segundos.
+- **Próximo episódio automático**, com aviso nos últimos 30 segundos ele muda para o próximo episódio ou toque no aviso para mudar.
 - **Categorias organizadas**, com filmes, séries, animes e gêneros.
 - **Temporadas e episódios** com imagens, títulos e descrições.
 - **Busca integrada** e opções para personalizar a tela inicial.
