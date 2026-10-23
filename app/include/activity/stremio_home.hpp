@@ -45,5 +45,6 @@ private:
     HRecyclerFrame* continueRec = nullptr;  // continue-watching carousel
     HRecyclerFrame* firstRowRec = nullptr;  // first catalog row; safe focus parking spot
     bool continueEnriching = false;
+    bool continueRefreshPending = false;
     bool rowsSubscribed = false;            // continue/library events hooked once         // a Cinemeta title-refresh pass is in flight
 };

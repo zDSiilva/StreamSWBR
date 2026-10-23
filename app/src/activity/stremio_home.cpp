@@ -420,6 +420,10 @@ StremioHome::StremioHome() {
 
 void StremioHome::draw(
     NVGcontext* vg, float x, float y, float width, float height, brls::Style style, brls::FrameContext* ctx) {
+    if (continueRefreshPending) {
+        auto stack=brls::Application::getActivitiesStack();
+        if (!stack.empty() && stack.back()->getContentView()==this) refreshContinue();
+    }
     stremio_theme::drawOceanBackground(vg, x, y, width, height);
     brls::Box::draw(vg, x, y, width, height, style, ctx);
 }
@@ -681,6 +685,12 @@ void StremioHome::addContinueRow() {
 }
 
 void StremioHome::refreshContinue() {
+    // Keep the saved focus target alive while a player/detail screen covers home.
+    auto stack=brls::Application::getActivitiesStack();
+    if (getParentActivity() && !stack.empty() && stack.back()->getContentView()!=this) {
+        continueRefreshPending=true; return;
+    }
+    continueRefreshPending=false;
     // Was focus inside this row? (true when the user just cleared an item;
     // false when the row is refreshing because playback stopped elsewhere.)
     bool focusHere = false;
