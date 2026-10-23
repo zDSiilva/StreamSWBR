@@ -18,6 +18,8 @@ public:
 
     void init();                            // load + hook MPV events (once)
     void setCurrent(const ResumeEntry& e);  // call right before playing a title
+    void markCurrentWatched();
+    void checkpoint();
     std::vector<ResumeEntry> continueWatching() const;  // in-progress, most-recent first
     void remove(const std::string& streamId);           // clear one item
     // Refresh a stored entry's display name/poster (e.g. with an English title

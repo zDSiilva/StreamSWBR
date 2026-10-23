@@ -5,6 +5,7 @@
 #include "activity/stremio_streams.hpp"
 #include "activity/stremio_resume.hpp"
 #include "activity/stremio_playback.hpp"
+#include "activity/watched_store.hpp"
 #include "view/recycling_grid.hpp"
 #include "view/video_card.hpp"
 #include "view/svg_image.hpp"
@@ -25,12 +26,35 @@ public:
         setAxis(brls::Axis::COLUMN); setFocusable(true); setPadding(18,24,18,24);
         setCornerRadius(14); setBackgroundColor(nvgRGB(27,39,65));
         name=new brls::Label(); name->setFontSize(24); name->setHeight(34);
+        name->setSingleLine(true); name->setWidthPercentage(100);
         name->setShrink(0); name->setTextColor(stremio_theme::TEXT); addView(name);
         detail=new brls::Label(); detail->setFontSize(17); detail->setHeight(26);
+        detail->setSingleLine(true); detail->setWidthPercentage(100);
         detail->setShrink(0); detail->setTextColor(stremio_theme::TEXT_DIM); addView(detail);
     }
     brls::Label* name=nullptr;
     brls::Label* detail=nullptr;
+    std::set<std::string> episodeIds;
+    void draw(NVGcontext* vg,float x,float y,float w,float h,brls::Style style,brls::FrameContext* ctx) override {
+        size_t done=0; for (const auto& id:episodeIds) if (watched::store().contains(id)) ++done;
+        bool complete=!episodeIds.empty() && done==episodeIds.size();
+        auto text=complete ? std::string("Temporada concluída") : fmt::format("{} de {} episódios assistidos",done,episodeIds.size());
+        if (detail->getFullText()!=text) detail->setText(text);
+        detail->setTextColor(complete ? nvgRGB(120,220,175) : stremio_theme::TEXT_DIM);
+        RecyclingGridItem::draw(vg,x,y,w,h,style,ctx);
+        nvgSave(vg); nvgIntersectScissor(vg,x+20,y+4,w-40,h-8);
+        nvgBeginPath(vg); nvgRoundedRect(vg,x+24,y+h-13,w-48,3,1.5f);
+        nvgFillColor(vg,nvgRGBA(120,220,175,35)); nvgFill(vg);
+        if (done && !episodeIds.empty()) {
+            nvgBeginPath(vg); nvgRoundedRect(vg,x+24,y+h-13,(w-48)*done/episodeIds.size(),3,1.5f);
+            nvgFillColor(vg,nvgRGB(100,205,155)); nvgFill(vg);
+        }
+        if (complete) {
+            nvgBeginPath(vg); nvgMoveTo(vg,x+w-48,y+30); nvgLineTo(vg,x+w-42,y+36); nvgLineTo(vg,x+w-31,y+23);
+            nvgStrokeWidth(vg,2); nvgStrokeColor(vg,nvgRGB(120,220,175)); nvgStroke(vg);
+        }
+        nvgRestore(vg);
+    }
 };
 
 struct SeasonEntry {
@@ -49,8 +73,7 @@ public:
         SeasonCell* cell = dynamic_cast<SeasonCell*>(recycler->dequeueReusableCell("Cell"));
         auto& s = this->list.at(index);
         cell->name->setText(s.label);
-        cell->detail->setText(
-            fmt::format("{} episódios disponíveis · A para explorar", s.episodes.size()));
+        cell->episodeIds.clear(); for (const auto& episode:s.episodes) if (!episode.id.empty()) cell->episodeIds.insert(episode.id);
         return cell;
     }
 
@@ -72,6 +95,16 @@ private:
 class EpisodeCell : public BaseCardCell {
 public:
     EpisodeCell() { this->inflateFromXMLRes("xml/view/episode_card.xml"); }
+    std::string episodeId;
+    void draw(NVGcontext* vg,float x,float y,float w,float h,brls::Style style,brls::FrameContext* ctx) override {
+        BaseCardCell::draw(vg,x,y,w,h,style,ctx);
+        if (!watched::store().contains(episodeId)) return;
+        // Draw the check directly; it never depends on a font glyph or title width.
+        nvgSave(vg); nvgIntersectScissor(vg,x,y,w,h);
+        nvgBeginPath(vg); nvgCircle(vg,x+213,y+25,12); nvgFillColor(vg,nvgRGBA(19,85,60,245)); nvgFill(vg);
+        nvgBeginPath(vg); nvgMoveTo(vg,x+207,y+25); nvgLineTo(vg,x+211,y+29); nvgLineTo(vg,x+219,y+20);
+        nvgStrokeWidth(vg,2); nvgStrokeColor(vg,nvgRGB(160,245,201)); nvgStroke(vg); nvgRestore(vg);
+    }
 
     BRLS_BIND(brls::Label, labelName, "episode/card/name");
     BRLS_BIND(brls::Label, labelOverview, "episode/card/overview");
@@ -87,6 +120,7 @@ public:
     RecyclingGridItem* cellForRow(RecyclingView* recycler, size_t index) override {
         EpisodeCell* cell = dynamic_cast<EpisodeCell*>(recycler->dequeueReusableCell("Cell"));
         auto& v = this->list.at(index);
+        cell->episodeId=v.id;
 
         cell->labelName->setText(fmt::format("Episódio {} · {}", v.episode, v.name));
         // Prefix the air date (YYYY-MM-DD) to the overview when available.

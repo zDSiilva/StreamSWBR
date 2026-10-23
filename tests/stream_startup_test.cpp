@@ -77,5 +77,15 @@ int main() {
     assert(!loading_activity::busy());
     { auto activity=loading_activity::track(); auto copied=activity; activity.reset(); assert(loading_activity::busy()); }
     assert(!loading_activity::busy());
+    stream_worker::Queue navigationQueue;
+    std::promise<bool> navigationStarted; auto navigationRunning=navigationStarted.get_future();
+    navigationQueue.submit([&](auto cancel){ navigationStarted.set_value(true); while (!cancel->load()) std::this_thread::sleep_for(1ms); });
+    assert(navigationRunning.wait_for(2s)==std::future_status::ready);
+    std::atomic_bool staleNavigation{false};
+    navigationQueue.submit([&](auto){staleNavigation=true;});
+    navigationQueue.cancelPending();
+    std::promise<bool> newNavigation; auto newNavigationDone=newNavigation.get_future();
+    navigationQueue.submit([&](auto){newNavigation.set_value(true);});
+    assert(newNavigationDone.wait_for(2s)==std::future_status::ready && !staleNavigation);
     std::cout<<"OK: cold startup bypasses metadata, DNS retry, cancellation and prefetch isolation\n";
 }

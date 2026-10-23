@@ -10,6 +10,7 @@
 #include "api/meta_cache.hpp"
 #include "api/resolver_cache.hpp"
 #include "activity/launch_policy.hpp"
+#include "activity/watched_store.hpp"
 #include <cassert>
 #include <filesystem>
 #include <future>
@@ -101,6 +102,17 @@ int main() {
     const auto directory = std::filesystem::temp_directory_path() /
         ("streamfin-pt-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(directory);
+    watched::Store watchedFirst; watchedFirst.load(directory.string());
+    assert(!watchedFirst.contains("tt123:1:1"));
+    assert(watchedFirst.mark("tt123:1:1"));
+    assert(!watchedFirst.mark("tt123:1:1"));
+    assert(!watchedFirst.mark(""));
+    watched::Store watchedReloaded; watchedReloaded.load(directory.string());
+    assert(watchedReloaded.contains("tt123:1:1"));
+    assert(!watchedReloaded.contains("tt123:1:2"));
+    assert(watchedReloaded.mark("tt123:1:2"));
+    watchedFirst.load(directory.string());
+    assert(watchedFirst.contains("tt123:1:1") && watchedFirst.contains("tt123:1:2"));
     stream_preferences::load(directory.string());
     auto prefs = stream_preferences::get(); prefs.tmdbToken = "fixture-token"; prefs.preferredServer = "Malfoy";
     assert(stream_preferences::save(prefs));

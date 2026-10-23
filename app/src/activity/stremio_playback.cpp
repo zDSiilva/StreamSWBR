@@ -183,6 +183,7 @@ bool canAdvanceNow(double position,double duration) {
 }
 bool advanceNow(double position,double duration) {
     if (!canAdvanceNow(position,duration)) return false;
+    ResumeTracker::instance().markCurrentWatched();
     return ended();
 }
 bool ended() {

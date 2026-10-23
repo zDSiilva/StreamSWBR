@@ -10,6 +10,7 @@
 #include "activity/launch_policy.hpp"
 #include "activity/stream_preferences.hpp"
 #include "activity/stremio_home.hpp"
+#include "activity/home_navigation.hpp"
 
 #include "view/svg_image.hpp"
 #include "view/poster_title.hpp"
@@ -114,6 +115,7 @@ int main(int argc, char* argv[]) {
 
     // Have the application register an action on every activity that will quit when you press BUTTON_START
     brls::Application::setGlobalQuit(false);
+    home_navigation::install();
 
     // Register custom views (including tabs, which are views)
     brls::Application::registerXMLView("SVGImage", SVGImage::create);

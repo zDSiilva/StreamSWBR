@@ -51,7 +51,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     heading->setHeight(44); heading->setShrink(0);
     heading->setTextColor(stremio_theme::TEXT); addView(heading);
     auto* shortcuts = new brls::Label();
-    shortcuts->setText("Na tela inicial: X adiciona/remove dos favoritos · Y buscar · − complemento · + configurações");
+    shortcuts->setText("Na tela inicial: X favoritos · Y buscar · − complemento · + configurações · ZR volta ao início");
     shortcuts->setFontSize(16); shortcuts->setHeight(28); shortcuts->setShrink(0);
     shortcuts->setMarginBottom(16); shortcuts->setTextColor(stremio_theme::TEXT_DIM); addView(shortcuts);
     auto* scroll = new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(false);

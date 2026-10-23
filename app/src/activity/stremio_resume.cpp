@@ -11,6 +11,8 @@
 #include <ctime>
 #include <cmath>
 #include "activity/resume_policy.hpp"
+#include "activity/playback_policy.hpp"
+#include "activity/watched_store.hpp"
 
 ResumeTracker& ResumeTracker::instance() {
     static ResumeTracker t;
@@ -21,6 +23,7 @@ void ResumeTracker::init() {
     if (this->inited) return;
     this->inited = true;
     this->load();
+    watched::store().load(AppConfig::instance().configDir());
 
     MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum e) {
         auto& mpv = MPVCore::instance();
@@ -35,6 +38,7 @@ void ResumeTracker::init() {
             break;
         case MpvEventEnum::UPDATE_PROGRESS: {
             if (!this->hasCurrent || !this->loaded) break;
+            if (playback_policy::countdown(mpv.playback_time,mpv.duration)) this->markCurrentWatched();
             long now = (long)time(nullptr);
             if (now - this->lastTick >= 5) {
                 this->lastTick = now;
@@ -42,8 +46,10 @@ void ResumeTracker::init() {
             }
             break;
         }
-        case MpvEventEnum::MPV_STOP:
         case MpvEventEnum::END_OF_FILE:
+            if (this->hasCurrent && this->loaded) this->markCurrentWatched();
+            [[fallthrough]];
+        case MpvEventEnum::MPV_STOP:
             // Ignore STOP from the previous file while a new file is loading.
             if (!this->loaded) break;
             if (this->hasCurrent) this->onProgress(mpv.playback_time, mpv.duration, true);
@@ -76,7 +82,8 @@ void ResumeTracker::setCurrent(const ResumeEntry& e) {
 
 void ResumeTracker::onProgress(double pos, double dur, bool fire) {
     if (!resume_policy::recordable(pos,dur)) return;
-    if (dur > 0 && pos / dur >= 0.92) {
+    bool episode=(current.streamType=="series" || current.streamType=="anime") && current.streamId.find(':')!=std::string::npos;
+    if ((episode && watched::store().contains(current.streamId)) || (!episode && dur > 0 && pos / dur >= 0.92)) {
         this->removeId(this->current.streamId);  // finished -> drop
     } else {
         ResumeEntry e = this->current;
@@ -89,6 +96,17 @@ void ResumeTracker::onProgress(double pos, double dur, bool fire) {
     if (fire) this->changedEvent.fire();
 }
 
+void ResumeTracker::markCurrentWatched() {
+    if (!hasCurrent || !loaded || (current.streamType!="series" && current.streamType!="anime") || current.streamId.find(':')==std::string::npos) return;
+    if (!watched::store().mark(current.streamId)) return;
+    removeId(current.streamId); save(); changedEvent.fire();
+}
+void ResumeTracker::checkpoint() {
+    if (!hasCurrent || !loaded) return;
+    auto& mpv=MPVCore::instance();
+    if (playback_policy::countdown(mpv.playback_time,mpv.duration)) markCurrentWatched();
+    onProgress(mpv.playback_time,mpv.duration,true);
+}
 void ResumeTracker::upsert(const ResumeEntry& e) {
     for (auto& it : this->items)
         if (it.streamId == e.streamId) {

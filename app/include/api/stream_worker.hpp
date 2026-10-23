@@ -32,6 +32,11 @@ public:
         }
     }) {}
     ~Queue() { stop(); }
+    void cancelPending() {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (active) active->store(true);
+        for (auto& job:jobs) job.cancel->store(true);
+    }
     void stop() {
         { std::lock_guard<std::mutex> lock(mutex); stopping=true;
           if (active) active->store(true); for (auto& job:jobs) job.cancel->store(true); }
