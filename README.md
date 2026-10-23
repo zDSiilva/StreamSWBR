@@ -79,7 +79,7 @@ O aplicativo não hospeda filmes ou séries. A disponibilidade dos vídeos, idio
 
 ## Créditos
 
-Personalização, identidade visual e edição: **Diguit**.
+Personalização, identidade visual e edição: **[Diguit](https://x.com/digsva)**.
 
 Baseado em [StreamFinEX, de Kirbosh](https://github.com/Kirbosh/StreamFinEX), [StreamFin, de scamNscoot](https://github.com/scamNscoot/StreamFin) e [Switchfin, de dragonflylee](https://github.com/dragonflylee/switchfin). Agradecimentos aos autores e colaboradores originais, com licenças e avisos de autoria preservados.
 
