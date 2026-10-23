@@ -1,6 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <algorithm>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -13,16 +14,31 @@ inline std::string trim(std::string value) {
 }
 inline std::string normalize(std::string value) {
     value=trim(value);
-    while (!value.empty() && value.back()=='/') value.pop_back();
-    for (const auto& suffix : {std::string("/manifest.json"),std::string("/manifest/json")})
-        if (value.size()>suffix.size() && value.compare(value.size()-suffix.size(),suffix.size(),suffix)==0)
-            value.resize(value.size()-suffix.size());
-    while (!value.empty() && value.back()=='/') value.pop_back();
-    const size_t start=value.rfind("https://",0)==0 ? 8 : value.rfind("http://",0)==0 ? 7 : 0;
-    if (!start || value.find_first_of(" \t\r\n")!=std::string::npos) return "";
-    auto end=value.find_first_of("/?#",start);
-    if (value.substr(start,end==std::string::npos ? end : end-start).empty()) return "";
-    return value;
+    const auto schemeEnd=value.find("://");
+    if (schemeEnd==std::string::npos || value.find_first_of(" \t\r\n")!=std::string::npos) return "";
+    auto scheme=value.substr(0,schemeEnd);
+    std::transform(scheme.begin(),scheme.end(),scheme.begin(),[](unsigned char c){return std::tolower(c);});
+    if (scheme!="http" && scheme!="https") return "";
+    const auto start=schemeEnd+3, end=value.find_first_of("/?#",start);
+    auto authority=value.substr(start,end==std::string::npos ? end : end-start);
+    if (authority.empty()) return "";
+    const auto credentials=authority.rfind('@');
+    auto hostBegin=authority.begin()+(credentials==std::string::npos ? 0 : credentials+1);
+    std::transform(hostBegin,authority.end(),hostBegin,[](unsigned char c){return std::tolower(c);});
+    const auto port=scheme=="https" ? std::string(":443") : std::string(":80");
+    if (authority.size()>port.size() && authority.compare(authority.size()-port.size(),port.size(),port)==0)
+        authority.resize(authority.size()-port.size());
+    auto path=end==std::string::npos ? std::string{} : value.substr(end);
+    while (!path.empty() && path.back()=='/') path.pop_back();
+    for (const auto& suffix:{std::string("/manifest.json"),std::string("/manifest/json")})
+        if (path.size()>=suffix.size() && path.compare(path.size()-suffix.size(),suffix.size(),suffix)==0)
+            path.resize(path.size()-suffix.size());
+    while (!path.empty() && path.back()=='/') path.pop_back();
+    // Only the public, unconfigured endpoint aliases are interchangeable.
+    // Preserve custom paths and query strings: those can represent different configurations.
+    if ((authority=="fenixflix.fenixhub.online" || authority=="froststream.cloutteam.com") &&
+        (path.empty() || path=="/manifest" || path=="/manifest/json" || path=="/manifest.json")) return "https://"+authority;
+    return scheme+"://"+authority+path;
 }
 inline std::string host(const std::string& url) {
     auto start=url.find("://"); if (start==std::string::npos) return "Complemento";
@@ -30,6 +46,15 @@ inline std::string host(const std::string& url) {
     auto value=url.substr(start,end==std::string::npos ? end : end-start);
     auto at=value.rfind('@'); if (at!=std::string::npos) value=value.substr(at+1);
     return value;
+}
+inline std::string displayName(const std::string& url,std::string name) {
+    name=trim(name); auto lower=name;
+    std::transform(lower.begin(),lower.end(),lower.begin(),[](unsigned char c){return std::tolower(c);});
+    if (url=="https://fenixflix.fenixhub.online" && (name.empty() || lower=="fenixflix" ||
+        lower=="phoenixflix" || lower=="fenixflix.fenixhub.online")) return "FenixFlix";
+    if (url=="https://froststream.cloutteam.com" && (name.empty() || lower=="froststream" ||
+        lower=="frost stream" || lower=="froststream.cloutteam.com")) return "FrostStream";
+    return name.empty() ? host(url) : name;
 }
 struct Entry { std::string name,url; bool enabled=false; };
 struct State {
@@ -41,7 +66,7 @@ struct State {
         std::vector<Entry> result; for (const auto& e:entries) if (e.enabled) result.push_back(e); return result;
     }
     bool enabled(const std::string& url) const {
-        for (const auto& e:entries) if (e.url==url) return e.enabled; return false;
+        for (const auto& e:entries) if (e.url==normalize(url)) return e.enabled; return false;
     }
     void reconcile() {
         if (enabled(active)) return;
@@ -68,8 +93,8 @@ struct State {
         auto it=std::find_if(entries.begin(),entries.end(),[&](const Entry& e) { return e.url==url; });
         if (it==entries.end()) {
             if (entries.size()>=20) return false;
-            entries.push_back({trim(name).empty() ? host(url) : trim(name),url});
-        } else if (!trim(name).empty()) it->name=trim(name);
+            entries.push_back({displayName(url,name),url});
+        } else if (!trim(name).empty()) it->name=displayName(url,name);
         if (activate) { active=url; for (auto& e:entries) if (e.url==url) e.enabled=true; }
         return true;
     }
@@ -113,7 +138,7 @@ struct State {
             for (auto& entry:result.entries) {
                 entry.enabled=false;
                 for (const auto& item:*list) if (normalize(read(item,"url"))==entry.url) {
-                    auto flag=item.find("enabled"); entry.enabled=flag!=item.end() && flag->is_boolean() && flag->get<bool>(); break;
+                    auto flag=item.find("enabled"); entry.enabled=entry.enabled || (flag!=item.end() && flag->is_boolean() && flag->get<bool>());
                 }
             }
         }

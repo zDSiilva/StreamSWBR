@@ -161,6 +161,11 @@ inline void loadAddon(const std::string& configDir) {
         STREAM_ADDON = VIDEO_ADDONS.active;
         POSTER_TEMPLATE = normalizePosterTemplate(jstr(j, "poster"));
         SUBTITLES_ADDON = normalizeAddonUrl(jstr(j, "subtitles"));
+        in.close();
+        const auto canonical=VIDEO_ADDONS.json(); bool migrated=false;
+        for (auto i=canonical.begin();i!=canonical.end();++i)
+            if (!j.contains(i.key()) || j[i.key()]!=i.value()) migrated=true;
+        if (migrated) saveConfig(configDir);
     } catch (const std::exception& e) {
         brls::Logger::warning("loadAddon: {}", e.what());
     }
@@ -633,7 +638,7 @@ inline stream_worker::Cancel fetchStreams(const std::string& type, const std::st
     if (id.rfind("kitsu:", 0) == 0)
         for (const char* t : {"series", "anime", "movie"})
             if (t != type) types.push_back(t);
-    const auto addonBase = origin.empty() ? STREAM_ADDON : origin;
+    const auto addonBase = normalizeAddonUrl(origin.empty() ? STREAM_ADDON : origin);
     auto& worker=queue ? *queue : (background ? stream_worker::prefetch() : stream_worker::foreground());
     return worker.submit([types,then,error,id,addonBase](stream_worker::Cancel cancel) {
         std::string last="request failed";

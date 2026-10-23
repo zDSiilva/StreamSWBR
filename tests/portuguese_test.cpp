@@ -101,6 +101,35 @@ int main() {
     assert(disabled.edit("https://third.example","Terceiro editado","https://third.example/new"));
     assert(disabled.enabled("https://third.example/new"));
     assert(disabled.remove("https://third.example/new") && disabled.enabledEntries().empty());
+    const std::string canonicalFenix="https://fenixflix.fenixhub.online";
+    for (const auto& alias:{"http://fenixflix.fenixhub.online/manifest/json",
+            "https://FENIXFLIX.FENIXHUB.ONLINE:443/manifest.json/",
+            "https://fenixflix.fenixhub.online/manifest",
+            "https://fenixflix.fenixhub.online/manifest/json/manifest.json"}) {
+        assert(addon_profiles::normalize(alias)==canonicalFenix);
+    }
+    auto duplicates=State::fromJson({{"multiVersion",1},{"url","http://fenixflix.fenixhub.online/manifest/json"},
+        {"addons",nlohmann::json::array({
+            {{"name","fenixflix.fenixhub.online"},{"url","http://fenixflix.fenixhub.online/manifest/json"},{"enabled",false}},
+            {{"name","FenixFlix"},{"url",canonicalFenix},{"enabled",true}},
+            {{"name","FrostStream"},{"url","https://froststream.cloutteam.com"},{"enabled",true}}
+        })}});
+    assert(duplicates.entries.size()==2 && duplicates.enabledEntries().size()==2);
+    assert(duplicates.entries[0].name=="FenixFlix" && duplicates.enabled(canonicalFenix));
+    assert(duplicates.enabled("http://fenixflix.fenixhub.online/manifest/json"));
+    assert(State::fromJson(duplicates.json()).entries.size()==2);
+    assert(duplicates.toggle(canonicalFenix));
+    auto dedupDisabled=State::fromJson(duplicates.json()); dedupDisabled.initializeDefaults();
+    assert(!dedupDisabled.enabled(canonicalFenix) && dedupDisabled.entries.size()==2);
+    assert(dedupDisabled.add("Minha configuração","https://fenixflix.fenixhub.online/custom/manifest.json"));
+    assert(dedupDisabled.entries.size()==3); // Configured paths are not public-endpoint aliases.
+    assert(addon_profiles::normalize("https://User:Pass@EXAMPLE.ORG/config/manifest.json")=="https://User:Pass@example.org/config");
+    auto history=legacy; history.sourceAddon="http://fenixflix.fenixhub.online/manifest/json";
+    const auto originalHistory=nlohmann::json(history);
+    assert(normalizeResumeAddon(history) && history.sourceAddon==canonicalFenix);
+    auto migratedHistory=nlohmann::json(history); migratedHistory["sourceAddon"]=originalHistory["sourceAddon"];
+    assert(migratedHistory==originalHistory); // No title, position, provider or episode changes.
+    assert(!normalizeResumeAddon(history));
     using namespace stream_options;
     assert(preferred("FenixFlix 1080p · MALFOY", "Malfoy"));
     assert(before("Malfoy 720p","FenixHub 2160p",""));

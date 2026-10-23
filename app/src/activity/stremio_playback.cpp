@@ -37,7 +37,7 @@ int choose(const ResumeEntry& key,const std::vector<stremio::Stream>& streams) {
     for (size_t i=0;i<streams.size();++i) {
         if (streams[i].url.empty()) continue;
         ResumeEntry candidate; identify(candidate,streams[i]);
-        if (!key.sourceAddon.empty() && key.sourceAddon!=candidate.sourceAddon) continue;
+        if (!key.sourceAddon.empty() && addon_profiles::normalize(key.sourceAddon)!=candidate.sourceAddon) continue;
         int score=playback_policy::score(key.sourceProvider,key.sourceHost,key.sourceQuality,key.sourceAudio,
             candidate.sourceProvider,candidate.sourceHost,candidate.sourceQuality,candidate.sourceAudio);
         if (score>bestScore) { bestScore=score; best=int(i); }

@@ -100,7 +100,7 @@ private:
 class StreamCell : public RecyclingGridItem {
 public:
     StreamCell() {
-        setFocusable(true); setAxis(brls::Axis::COLUMN); setPadding(12,38,12,22); setCornerRadius(12);
+        setFocusable(true); setAxis(brls::Axis::COLUMN); setPadding(12,72,12,22); setCornerRadius(12);
         name=new brls::Label(); name->setFontSize(22); name->setHeight(32); name->setShrink(0);
         name->setSingleLine(true); name->setAutoAnimate(false); name->setWidthPercentage(100); addView(name);
         detail=new brls::Label(); detail->setFontSize(17); detail->setHeight(26); detail->setShrink(0);
@@ -113,10 +113,15 @@ public:
     void draw(NVGcontext* vg,float x,float y,float w,float h,brls::Style s,brls::FrameContext* c) override {
         RecyclingGridItem::draw(vg,x,y,w,h,s,c);
         if (!header) return;
-        nvgSave(vg); nvgIntersectScissor(vg,x,y,w,h); nvgBeginPath(vg);
-        if (expanded) { nvgMoveTo(vg,x+15,y+25); nvgLineTo(vg,x+21,y+31); nvgLineTo(vg,x+27,y+25); }
-        else { nvgMoveTo(vg,x+18,y+22); nvgLineTo(vg,x+24,y+28); nvgLineTo(vg,x+18,y+34); }
-        nvgStrokeColor(vg,nvgRGB(130,225,193)); nvgStrokeWidth(vg,2); nvgStroke(vg); nvgRestore(vg);
+        nvgSave(vg); nvgIntersectScissor(vg,x,y,w,h);
+        const float cx=x+w-36, cy=y+h/2;
+        nvgBeginPath(vg); nvgRoundedRect(vg,cx-16,cy-16,32,32,10);
+        nvgFillColor(vg,nvgRGBA(120,225,193,24)); nvgFill(vg);
+        nvgBeginPath(vg);
+        if (expanded) { nvgMoveTo(vg,cx-5,cy-3); nvgLineTo(vg,cx,cy+3); nvgLineTo(vg,cx+5,cy-3); }
+        else { nvgMoveTo(vg,cx-3,cy-5); nvgLineTo(vg,cx+3,cy); nvgLineTo(vg,cx-3,cy+5); }
+        nvgStrokeColor(vg,nvgRGB(150,235,208)); nvgStrokeWidth(vg,2.2f);
+        nvgLineCap(vg,NVG_ROUND); nvgLineJoin(vg,NVG_ROUND); nvgStroke(vg); nvgRestore(vg);
     }
 };
 struct SourceRow {

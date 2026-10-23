@@ -167,6 +167,9 @@ void ResumeTracker::load() {
             nlohmann::json j;
             in >> j;
             this->items = j.get<std::vector<ResumeEntry>>();
+            in.close(); bool migrated=false;
+            for (auto& item:this->items) migrated=normalizeResumeAddon(item) || migrated;
+            if (migrated) this->save();
         }
     } catch (const std::exception& e) {
         brls::Logger::warning("Resume load: {}", e.what());
