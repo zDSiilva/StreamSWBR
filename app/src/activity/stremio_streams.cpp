@@ -187,6 +187,9 @@ void stremio_playback::prepareSubtitles(const std::string& type,const std::strin
 StreamPicker::StreamPicker(
     const std::string& title, const std::vector<stremio::Stream>& streams, const ResumeEntry& resumeKey) {
     this->resumeKey = resumeKey;
+    this->origin=resumeKey.sourceAddon.empty() ? stremio::STREAM_ADDON : resumeKey.sourceAddon;
+    if (!streams.empty() && !streams.front().sourceAddon.empty()) this->origin=streams.front().sourceAddon;
+    this->resumeKey.sourceAddon=this->origin;
     brls::Logger::debug("StreamPicker: {} streams", streams.size());
     this->setAxis(brls::Axis::COLUMN);
     this->setDimensions(brls::Application::contentWidth, brls::Application::contentHeight);
@@ -202,6 +205,18 @@ StreamPicker::StreamPicker(
     heading->setHeight(42); heading->setShrink(0);
     heading->setAutoAnimate(false); heading->setTextColor(stremio_theme::TEXT);
     heading->setMarginBottom(12); this->addView(heading);
+    this->addonLabel=new brls::Label();
+    this->addonLabel->setFontSize(18); this->addonLabel->setHeight(28); this->addonLabel->setShrink(0);
+    this->addonLabel->setSingleLine(true); this->addView(this->addonLabel);
+    this->alternateButton=new brls::Box();
+    this->alternateButton->setFocusable(true); this->alternateButton->setPadding(10,20,10,20);
+    this->alternateButton->setCornerRadius(10); this->alternateButton->setShrink(0);
+    this->alternateButton->setMarginBottom(12); this->alternateButton->setBackgroundColor(nvgRGB(24,100,87));
+    this->alternateLabel=new brls::Label(); this->alternateLabel->setFontSize(19);
+    this->alternateLabel->setHeight(26); this->alternateLabel->setSingleLine(true);
+    this->alternateButton->addView(this->alternateLabel); this->addView(this->alternateButton);
+    this->alternateButton->registerClickAction([this](brls::View*) { this->searchAlternate(); return true; });
+    this->alternateButton->addGestureRecognizer(new brls::TapGestureRecognizer(this->alternateButton));
     auto* filters = new brls::Box();
     this->filterButton = filters;
     filters->setFocusable(true); filters->setPadding(12, 20, 12, 20); filters->setCornerRadius(12);
@@ -237,7 +252,7 @@ StreamPicker::StreamPicker(
     // Defer focus until after the activity is on screen.
     brls::sync([this]() { brls::Application::giveFocus(this); });
     brls::sync([this]() {
-        brls::Application::giveFocus(this->streams.empty() ? static_cast<brls::View*>(this->filterButton) : this->recycler);
+        brls::Application::giveFocus(this->streams.empty() ? static_cast<brls::View*>(this->alternateButton) : this->recycler);
     });
 
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [](brls::View*) {
@@ -247,6 +262,9 @@ StreamPicker::StreamPicker(
 }
 
 void StreamPicker::refresh() {
+    bool frost=this->origin.find("froststream.cloutteam.com")!=std::string::npos;
+    this->addonLabel->setText("Add-on desta busca: "+(frost ? std::string("FrostStream") : addon_profiles::host(this->origin)));
+    this->alternateLabel->setText(frost ? "Buscar no FenixFlix" : "Buscar no FrostStream");
     bool focused = false;
     for (auto* view = brls::Application::getCurrentFocus(); view; view = view->getParent())
         if (view == this) { focused = true; break; }
@@ -268,7 +286,32 @@ void StreamPicker::refresh() {
         " opções · Y filtrar · X detalhes");
     this->filterButton->setBackgroundColor(filter == 0 ? nvgRGB(40, 92, 154) : nvgRGB(105, 64, 195));
     if (filtered.empty()) this->recycler->setEmpty(this->streams.empty() ?
-        "Nenhum vídeo compatível. Verifique o complemento." : "Nenhuma opção neste filtro. Pressione Y para ver todas.");
+        "Sem vídeos neste add-on. Tente a busca alternativa acima." : "Nenhuma opção neste filtro. Pressione Y para ver todas.");
     else this->recycler->setDataSource(new StreamSource(this->resumeKey, filtered));
     if (focused && !filtered.empty()) brls::Application::giveFocus(this->recycler);
+}
+
+StreamPicker::~StreamPicker() {
+    this->alive->store(false);
+    if (this->lookup) this->lookup->store(true);
+}
+void StreamPicker::searchAlternate() {
+    if (this->searching) return;
+    this->searching=true;
+    const std::string target=this->origin.find("froststream.cloutteam.com")!=std::string::npos
+        ? "https://fenixflix.fenixhub.online" : "https://froststream.cloutteam.com";
+    this->alternateLabel->setText("Buscando neste outro add-on…");
+    auto guard=this->alive;
+    this->lookup=stremio::fetchStreams(this->resumeKey.streamType,this->resumeKey.streamId,
+        [this,guard,target](stremio::StreamList result,std::string type) {
+            if (!guard->load()) return;
+            this->searching=false; this->origin=target;
+            this->resumeKey.sourceAddon=target; this->resumeKey.streamType=type;
+            this->streams.clear();
+            for (const auto& stream:result.streams) if (!stream.url.empty()) this->streams.push_back(stream);
+            this->filter=0; this->refresh();
+        },[this,guard](const std::string& error) {
+            if (!guard->load()) return;
+            this->searching=false; this->refresh(); brls::Application::notify(error);
+        },false,target);
 }

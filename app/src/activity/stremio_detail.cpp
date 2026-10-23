@@ -390,10 +390,6 @@ void StremioDetail::openStreams() {
         [ASYNC_TOKEN, name](stremio::StreamList r, std::string usedType) {
             ASYNC_RELEASE
             this->fetching = false;
-            if (r.streams.empty()) {
-                brls::Application::notify("Nenhum vídeo encontrado");
-                return;
-            }
             ResumeEntry key{usedType, this->item.id, this->item.name, this->item.poster};
             brls::Application::pushActivity(new brls::Activity(new StreamPicker(name, r.streams, key)));
         },
@@ -401,5 +397,7 @@ void StremioDetail::openStreams() {
             ASYNC_RELEASE
             this->fetching = false;
             brls::Application::notify("Erro ao buscar vídeos: " + e);
+            ResumeEntry key{this->item.type,this->item.id,this->item.name,this->item.poster};
+            brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key)));
         });
 }

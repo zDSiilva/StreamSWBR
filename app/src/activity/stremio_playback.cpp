@@ -29,14 +29,14 @@ void identify(ResumeEntry& key,const stremio::Stream& stream) {
     key.sourceProvider=stream_options::server(text,"");
     key.sourceHost=addon_profiles::host(stream.url);
     key.sourceQuality=stream_options::quality(text); key.sourceAudio=stream_options::audio(text);
-    key.sourceAddon=stremio::STREAM_ADDON;
+    key.sourceAddon=stream.sourceAddon.empty() ? (key.sourceAddon.empty() ? stremio::STREAM_ADDON : key.sourceAddon) : stream.sourceAddon;
 }
 int choose(const ResumeEntry& key,const std::vector<stremio::Stream>& streams) {
-    if (key.sourceAddon!=stremio::STREAM_ADDON) return -1;
     int best=-1,bestScore=-1;
     for (size_t i=0;i<streams.size();++i) {
         if (streams[i].url.empty()) continue;
         ResumeEntry candidate; identify(candidate,streams[i]);
+        if (!key.sourceAddon.empty() && key.sourceAddon!=candidate.sourceAddon) continue;
         int score=playback_policy::score(key.sourceProvider,key.sourceHost,key.sourceQuality,key.sourceAudio,
             candidate.sourceProvider,candidate.sourceHost,candidate.sourceQuality,candidate.sourceAudio);
         if (score>bestScore) { bestScore=score; best=int(i); }
@@ -55,10 +55,10 @@ void unavailable(ResumeEntry key,std::vector<stremio::Stream> streams) {
     brls::sync([key,streams,ticket]() {
         if (ticket!=generation || !session.active) return;
         VideoView::close(true);
-        if (!streams.empty()) {
+        {
             brls::Application::notify("A fonte anterior não está disponível. Escolha outra para continuar.");
             brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,streams,key)));
-        } else brls::Application::notify("O próximo episódio não tem vídeo disponível neste complemento.");
+        }
     });
 }
 void resolveNext() {
@@ -80,8 +80,8 @@ void resolveNext() {
             if (ticket!=generation || !session.active) return;
             session.sourcePending=false;
             session.resolved=true;
-            if (session.waiting) { session.waiting=false; brls::Application::notify(error); VideoView::close(true); }
-        },true);
+            if (session.waiting) { brls::Application::notify(error); unavailable(*session.next,{}); }
+        },true,key.sourceAddon);
 }
 void discoverNext(unsigned ticket) {
     auto current=session.current;
@@ -103,7 +103,7 @@ void discoverNext(unsigned ticket) {
             auto v=videos[i+1]; if (v.season<=0 || v.episode<=0) break;
             auto series=current.name.substr(0,current.name.find(" · "));
             ResumeEntry key{current.streamType,v.id,series+" · S"+std::to_string(v.season)+"E"+std::to_string(v.episode)+" · "+v.name,v.thumbnail};
-            session.next=key; break;
+            key.sourceAddon=current.sourceAddon; session.next=key; break;
         }
         if (session.waiting) {
             if (session.next) resolveNext();
@@ -138,7 +138,7 @@ void interruptResume() {
 }
 void resume(const ResumeEntry& key) {
     if (resumeCancel) resumeCancel->store(true);
-    if (stremio::STREAM_ADDON.empty()) { brls::Application::notify("Selecione um complemento em Configurações."); return; }
+    if (key.sourceAddon.empty() && stremio::STREAM_ADDON.empty()) { brls::Application::notify("Selecione um complemento em Configurações."); return; }
     resuming=true; auto ticket=++generation;
     brls::Application::notify("Retomando reprodução…");
     resumeCancel=stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {
@@ -147,11 +147,11 @@ void resume(const ResumeEntry& key) {
         auto entry=key; entry.streamType=type;
         int selected=choose(key,result.streams);
         if (selected>=0) play(entry,result.streams[selected]);
-        else if (!result.streams.empty()) {
+        else {
             brls::Application::notify(key.sourceAddon.empty() ? "Escolha uma fonte uma vez para salvar sua preferência." : "A fonte anterior não está disponível. Escolha outra.");
             brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,result.streams,entry)));
-        } else brls::Application::notify("Nenhum vídeo disponível para retomar.");
-    },[ticket](const std::string& error) { if (ticket==generation) { resuming=false; brls::Application::notify(error); } });
+        }
+    },[ticket,key](const std::string& error) { if (ticket==generation) { resuming=false; brls::Application::notify(error); brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key))); } },false,key.sourceAddon);
     brls::delay(16000,[ticket]() {
         if (ticket!=generation || !resuming) return;
         if (resumeCancel) resumeCancel->store(true);
@@ -171,10 +171,8 @@ void failed() {
         stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {
             if (ticket!=generation) return;
             auto entry=key; entry.streamType=type;
-            if (!result.streams.empty())
-                brls::Application::pushActivity(new brls::Activity(new StreamPicker(entry.name,result.streams,entry)));
-            else brls::Application::notify("Nenhum vídeo disponível neste momento.");
-        },[ticket](const std::string& error) { if (ticket==generation) brls::Application::notify(error); });
+            brls::Application::pushActivity(new brls::Activity(new StreamPicker(entry.name,result.streams,entry)));
+        },[ticket,key](const std::string& error) { if (ticket==generation) { brls::Application::notify(error); brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key))); } },false,key.sourceAddon);
     });
     dialog->addButton("Voltar",[]() { VideoView::close(true); }); dialog->open();
 }

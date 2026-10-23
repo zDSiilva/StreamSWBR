@@ -158,14 +158,10 @@ public:
         std::string vid = v.id, thumb = v.thumbnail;
         stremio::fetchStreams("series", vid,
             [label, vid, thumb](stremio::StreamList r, std::string usedType) {
-                if (r.streams.empty()) {
-                    brls::Application::notify("Nenhum vídeo encontrado");
-                    return;
-                }
                 ResumeEntry key{usedType, vid, label, thumb};
                 brls::Application::pushActivity(new brls::Activity(new StreamPicker(label, r.streams, key)));
             },
-            [](const std::string& e) { brls::Application::notify("Erro ao buscar vídeos: " + e); });
+            [label,vid,thumb](const std::string& e) { brls::Application::notify("Erro ao buscar vídeos: " + e); ResumeEntry key{"series",vid,label,thumb}; brls::Application::pushActivity(new brls::Activity(new StreamPicker(label,{},key))); });
     }
 
     void clearData() override { this->list.clear(); }

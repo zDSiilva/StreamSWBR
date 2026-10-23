@@ -17,7 +17,17 @@ class StreamPicker : public brls::Box {
 public:
     StreamPicker(const std::string& title, const std::vector<stremio::Stream>& streams, const ResumeEntry& resumeKey);
 
+    ~StreamPicker() override;
+
 private:
+    void searchAlternate();
+    std::string origin;
+    brls::Label* addonLabel=nullptr;
+    brls::Label* alternateLabel=nullptr;
+    brls::Box* alternateButton=nullptr;
+    stream_worker::Cancel lookup;
+    std::shared_ptr<std::atomic_bool> alive=std::make_shared<std::atomic_bool>(true);
+    bool searching=false;
     void refresh();
     std::vector<stremio::Stream> streams;
     ResumeEntry resumeKey;

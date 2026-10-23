@@ -87,5 +87,18 @@ int main() {
     std::promise<bool> newNavigation; auto newNavigationDone=newNavigation.get_future();
     navigationQueue.submit([&](auto){newNavigation.set_value(true);});
     assert(newNavigationDone.wait_for(2s)==std::future_status::ready && !staleNavigation);
+    // Explicit origins must not mutate the global add-on or cross episode IDs.
+    auto configured=stremio::STREAM_ADDON;
+    HTTP::transport=[](const std::string& url,auto) {
+        assert(url=="https://froststream.cloutteam.com/stream/series/tt0898266:1:3.json");
+        return R"({"streams":[{"name":"Neon","url":"https://video.example/episode.mp4"}]})";
+    };
+    std::promise<bool> explicitOrigin; auto explicitDone=explicitOrigin.get_future();
+    stremio::fetchStreams("series","tt0898266:1:3",[&](auto result,auto type) {
+        explicitOrigin.set_value(type=="series" && result.streams.size()==1 &&
+            result.streams[0].sourceAddon=="https://froststream.cloutteam.com");
+    },[&](auto){explicitOrigin.set_value(false);},false,"https://froststream.cloutteam.com");
+    assert(explicitDone.wait_for(2s)==std::future_status::ready && explicitDone.get());
+    assert(stremio::STREAM_ADDON==configured);
     std::cout<<"OK: cold startup bypasses metadata, DNS retry, cancellation and prefetch isolation\n";
 }
