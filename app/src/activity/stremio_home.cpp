@@ -410,7 +410,7 @@ StremioHome::StremioHome() {
 
     // − sets/changes the stream addon URL; also prompts automatically on
     // first launch (deferred a frame so the window is up).
-    this->registerAction("Complemento de vídeo", brls::BUTTON_BACK, [](brls::View*) {
+    this->registerAction("Add-on de vídeo", brls::BUTTON_BACK, [](brls::View*) {
         promptForAddon(stremio::STREAM_ADDON);
         return true;
     });

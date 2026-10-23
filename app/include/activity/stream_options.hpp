@@ -4,6 +4,7 @@
 #include <regex>
 #include <string>
 #include <utility>
+#include <tuple>
 
 namespace stream_options {
 inline std::string lower(std::string value) {
@@ -44,7 +45,30 @@ inline std::string server(const std::string& raw, const std::string& favorite) {
     if (preferred(raw, favorite)) return favorite;
     for (const char* known : {"Malfoy", "Zunder", "FenixHub"})
         if (preferred(raw, known)) return known;
+    auto compact=lower(raw);
+    compact.erase(std::remove_if(compact.begin(),compact.end(),[](unsigned char c){return std::isspace(c) || c=='-';}),compact.end());
+    if (compact.find("fenixhub")!=std::string::npos || compact.find("phoenixhub")!=std::string::npos) return "FenixHub";
+    if (preferred(raw,"Hollymovies")) return "Hollymovies";
     return "Fonte do complemento";
+}
+inline int sourceRank(const std::string& raw,const std::string& favorite) {
+    auto name=server(raw,"");
+    if (!favorite.empty() && (preferred(raw,favorite) || lower(name)==lower(favorite))) return -1;
+    if (name=="Malfoy") return 0;
+    if (name=="FenixHub") return 1;
+    return name=="Fonte do complemento" ? 3 : 2;
+}
+inline int resolution(const std::string& raw) {
+    auto q=quality(raw);
+    if (q=="2160p" || q=="4k") return 2160;
+    if (q=="1080p") return 1080;
+    if (q=="720p") return 720;
+    if (q=="480p") return 480;
+    if (q=="360p") return 360;
+    return 0;
+}
+inline bool before(const std::string& a,const std::string& b,const std::string& favorite) {
+    return std::make_tuple(sourceRank(a,favorite),-resolution(a)) < std::make_tuple(sourceRank(b,favorite),-resolution(b));
 }
 inline std::string audio(const std::string& raw) {
     if (std::regex_search(lower(raw), std::regex("\\bdual[ -]?audio\\b"))) return "Áudio duplo";

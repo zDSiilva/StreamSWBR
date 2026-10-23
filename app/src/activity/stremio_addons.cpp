@@ -8,12 +8,12 @@ using namespace brls::literals;
 StremioAddons::StremioAddons(std::function<void()> onClose) {
     setAxis(brls::Axis::COLUMN); setPadding(28,60,28,60);
     setDimensions(brls::Application::contentWidth,brls::Application::contentHeight);
-    auto* title=new brls::Label(); title->setText("Complementos de vídeo");
+    auto* title=new brls::Label(); title->setText("Add-ons de vídeo");
     title->setFontSize(30); title->setHeight(44); title->setShrink(0); title->setTextColor(stremio_theme::TEXT); addView(title);
     auto* intro=new brls::Label();
-    intro->setText("Salve seus endereços e escolha qual usar. Apenas o complemento ativo busca vídeos.");
+    intro->setText("Salve seus endereços e escolha qual usar. Apenas o add-on ativo busca vídeos.");
     intro->setFontSize(18); intro->setHeight(32); intro->setShrink(0); intro->setTextColor(stremio_theme::TEXT_DIM); addView(intro);
-    addButton=new brls::Button(); addButton->setText("+ Adicionar complemento"); addButton->setShrink(0);
+    addButton=new brls::Button(); addButton->setText("+ Adicionar add-on"); addButton->setShrink(0);
     addButton->setMarginTop(16); addButton->setMarginBottom(18); addButton->setBackgroundColor(nvgRGB(51,101,148));
     addButton->registerClickAction([this](brls::View*) { askUrl(); return true; }); addView(addButton);
     auto* scroll=new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(true);
@@ -25,7 +25,7 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     later->registerClickAction([onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     }); addView(later);
-    stremio_theme::controls(this, {{"A","Selecionar complemento"},{"B","Voltar"}});
+    stremio_theme::controls(this, {{"A","Selecionar add-on"},{"B","Voltar"}});
     registerAction("hints/back"_i18n,brls::BUTTON_B,[onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     });
@@ -36,7 +36,7 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
 void StremioAddons::rebuild() {
     closeButton->setText(stremio::STREAM_ADDON.empty() ? "Configurar depois" : "Concluir e voltar");
     list->clearViews(true);
-    addButton->setText(stremio::VIDEO_ADDONS.entries.empty() ? "Adicionar outro endereço" : "+ Adicionar complemento");
+    addButton->setText(stremio::VIDEO_ADDONS.entries.empty() ? "Adicionar outro endereço" : "+ Adicionar add-on");
     if (stremio::VIDEO_ADDONS.entries.empty()) {
         auto* useFenix=new brls::Button(); useFenix->setText("Usar FenixFlix");
         useFenix->setShrink(0); useFenix->setMarginBottom(16); useFenix->setBackgroundColor(nvgRGB(28,79,74));
@@ -45,12 +45,12 @@ void StremioAddons::rebuild() {
             if (next.add("FenixFlix","https://fenixflix.fenixhub.online/manifest/json",true)) commit(next);
             return true;
         }); list->addView(useFenix);
-        auto* empty=new brls::Label(); empty->setText("Escolha FenixFlix para configurar com um clique ou adicione outro endereço.\nFenixFlix é um serviço de terceiros. Nenhum complemento é ativado sem sua escolha.");
+        auto* empty=new brls::Label(); empty->setText("Escolha FenixFlix para configurar com um clique ou adicione outro endereço.\nFenixFlix é um serviço de terceiros. Nenhum add-on é ativado sem sua escolha.");
         empty->setWidthPercentage(100); empty->setSingleLine(false); empty->setFontSize(20); empty->setLineHeight(1.35f);
         empty->setTextColor(stremio_theme::TEXT_DIM); list->addView(empty); return;
     }
     if (stremio::STREAM_ADDON.empty()) {
-        auto* note=new brls::Label(); note->setText("Nenhum complemento ativo. Selecione um endereço salvo para usar.");
+        auto* note=new brls::Label(); note->setText("Nenhum add-on ativo. Selecione um endereço salvo para usar.");
         note->setFontSize(18); note->setHeight(32); note->setShrink(0); note->setTextColor(stremio_theme::TEXT_DIM); list->addView(note);
     }
     for (const auto& entry:stremio::VIDEO_ADDONS.entries) {
@@ -80,7 +80,7 @@ void StremioAddons::commit(const addon_profiles::State& next) {
     if (!stremio::setVideoAddons(AppConfig::instance().configDir(),next)) {
         brls::Application::notify("Não foi possível salvar no cartão SD"); return;
     }
-    brls::Application::notify("Complementos salvos"); refresh();
+    brls::Application::notify("Add-ons salvos"); refresh();
 }
 void StremioAddons::actions(addon_profiles::Entry entry) {
     auto* dialog=new brls::Dialog(entry.name+"\n"+addon_profiles::host(entry.url));
@@ -92,13 +92,13 @@ void StremioAddons::actions(addon_profiles::Entry entry) {
         edit->addButton("Voltar",[]() {}); edit->open();
     });
     dialog->addButton("Excluir",[this,entry]() {
-        auto* confirm=new brls::Dialog("Excluir "+entry.name+"? Os favoritos e o histórico serão preservados."+(entry.url==stremio::STREAM_ADDON ? " Escolha outro complemento depois para assistir." : ""));
+        auto* confirm=new brls::Dialog("Excluir "+entry.name+"? Os favoritos e o histórico serão preservados."+(entry.url==stremio::STREAM_ADDON ? " Escolha outro add-on depois para assistir." : ""));
         confirm->addButton("Excluir",[this,entry]() { auto next=stremio::VIDEO_ADDONS; if (next.remove(entry.url)) commit(next); });
         confirm->addButton("Cancelar",[]() {}); confirm->open();
     }); dialog->open();
 }
 void StremioAddons::askUrl(addon_profiles::Entry entry) {
-    if (entry.url.empty() && stremio::VIDEO_ADDONS.entries.size()>=20) { brls::Application::notify("Você já tem 20 complementos salvos"); return; }
+    if (entry.url.empty() && stremio::VIDEO_ADDONS.entries.size()>=20) { brls::Application::notify("Você já tem 20 add-ons salvos"); return; }
     ASYNC_RETAIN
     brls::Application::getImeManager()->openForText([ASYNC_TOKEN,entry](const std::string& value) {
         ASYNC_RELEASE
@@ -106,7 +106,7 @@ void StremioAddons::askUrl(addon_profiles::Entry entry) {
         auto url=stremio::normalizeAddonUrl(value);
         if (url.empty()) { brls::Application::notify("Endereço inválido. Use HTTP ou HTTPS."); return; }
         askName(entry,url);
-    },"Endereço do complemento","Cole o endereço do complemento ou seu manifest.json.",2048,entry.url,0);
+    },"Endereço do add-on","Cole o endereço do add-on ou seu manifest.json.",2048,entry.url,0);
 }
 void StremioAddons::askName(addon_profiles::Entry entry,const std::string& url) {
     ASYNC_RETAIN
@@ -117,7 +117,7 @@ void StremioAddons::askName(addon_profiles::Entry entry,const std::string& url) 
         bool ok=entry.url.empty() ? next.add(value,url,true) : next.edit(entry.url,value,url);
         if (!ok) { brls::Application::notify("Endereço já salvo ou nome inválido"); return; }
         commit(next);
-    },"Nome do complemento","Escolha um nome para reconhecer este endereço na lista.",48,entry.name.empty() ? addon_profiles::host(url) : entry.name,0);
+    },"Nome do add-on","Escolha um nome para reconhecer este endereço na lista.",48,entry.name.empty() ? addon_profiles::host(url) : entry.name,0);
 }
 void StremioAddons::draw(NVGcontext* vg,float x,float y,float w,float h,brls::Style s,brls::FrameContext* c) {
     stremio_theme::drawOceanBackground(vg,x,y,w,h); brls::Box::draw(vg,x,y,w,h,s,c);

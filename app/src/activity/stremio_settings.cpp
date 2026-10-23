@@ -51,7 +51,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     heading->setHeight(44); heading->setShrink(0);
     heading->setTextColor(stremio_theme::TEXT); addView(heading);
     auto* shortcuts = new brls::Label();
-    shortcuts->setText("Na tela inicial: X favoritos · Y buscar · − complemento · + configurações · ZR volta ao início");
+    shortcuts->setText("Na tela inicial: X favoritos · Y buscar · − add-on · + configurações · ZR volta ao início");
     shortcuts->setFontSize(16); shortcuts->setHeight(28); shortcuts->setShrink(0);
     shortcuts->setMarginBottom(16); shortcuts->setTextColor(stremio_theme::TEXT_DIM); addView(shortcuts);
     auto* scroll = new brls::ScrollingFrame(); scroll->setGrow(1); scroll->setScrollingIndicatorVisible(false);
@@ -61,11 +61,11 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     categories->registerClickAction([this](brls::View*) {
         brls::Application::pushActivity(new brls::Activity(new StremioRows([this]() { rowsChanged = true; }))); return true;
     });
-    const char* names[] = {"Informações em português · Automático", "Fonte de vídeo preferida", "Complementos de vídeo", "Complemento de legendas"};
+    const char* names[] = {"Informações em português · Automático", "Fonte de vídeo preferida", "Add-ons de vídeo", "Complemento de legendas"};
     auto prefs = stream_preferences::get();
     const std::string values[] = {prefs.tmdbToken.empty() ? "Ativado · sem conta ou token · dados via TMDB Addon / ElfHosted" : "Credencial pessoal configurada · A para usar o modo automático",
-        (prefs.preferredServer.empty() ? "Automático" : prefs.preferredServer + (prefs.preferredServer == "Malfoy" ? " · Recomendado" : "")) + " · Prioriza a fonte; dublagem e idioma são escolhidos em Áudio preferido",
-        stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Complemento ativo · A para gerenciar endereços salvos",
+        prefs.preferredServer.empty() ? "Automático · prioriza Malfoy e FenixHub, quando disponíveis" : prefs.preferredServer+" · Quando disponível; idioma em Áudio preferido",
+        stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Add-on ativo · A para gerenciar endereços salvos",
         stremio::SUBTITLES_ADDON.empty() ? "Opcional · configurar endereço" : "Endereço configurado · A para editar"};
     for (int field = 0; field < 4; ++field) {
         brls::Label* label = nullptr;
@@ -74,7 +74,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
         row->registerClickAction([this, field, label](brls::View*) {
             if (field == 0) tmdbHelp(label);
             else if (field == 2) brls::Application::pushActivity(new brls::Activity(new StremioAddons([label]() {
-                label->setText(stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Complemento ativo · A para gerenciar endereços salvos");
+                label->setText(stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Add-on ativo · A para gerenciar endereços salvos");
             })));
             else edit(field, label); return true;
         });
@@ -135,21 +135,21 @@ void StremioSettings::tmdbHelp(brls::Label* label) {
 }
 void StremioSettings::edit(int field, brls::Label* label) {
     if (field == 1) {
-        const std::vector<std::string> sources = {"Malfoy", "Zunder", "FenixHub", ""};
-        const std::vector<std::string> labels = {"Malfoy · Recomendado", "Zunder", "FenixHub", "Automático · Ordem do complemento"};
+        const std::vector<std::string> sources = {"", "Malfoy", "FenixHub", "Zunder", "Hollymovies"};
+        const std::vector<std::string> labels = {"Automático · Malfoy, FenixHub e demais fontes", "Malfoy · Quando disponível", "FenixHub", "Zunder", "Hollymovies"};
         auto current = stream_preferences::get().preferredServer;
         auto it = std::find(sources.begin(),sources.end(),current);
-        int selected = it == sources.end() ? 3 : int(it-sources.begin());
+        int selected = it == sources.end() ? 0 : int(it-sources.begin());
         auto* dropdown = new brls::Dropdown("Fonte preferida · quando disponível", labels,
             [sources,label](int index) {
                 if (index < 0 || index >= int(sources.size())) return;
                 auto next=stream_preferences::get(); next.preferredServer=sources[index];
                 bool ok=stream_preferences::save(next); saved(ok);
-                if (ok) label->setText((next.preferredServer.empty() ? "Automático" : next.preferredServer + (index==0 ? " · Recomendado" : "")) + " · Prioriza a fonte; idioma em Áudio preferido");
+                if (ok) label->setText(next.preferredServer.empty() ? "Automático · prioriza Malfoy e FenixHub, quando disponíveis" : next.preferredServer+" · Quando disponível; idioma em Áudio preferido");
             },selected);
         brls::Application::pushActivity(new brls::Activity(dropdown)); return;
     }
-    const char* titles[] = {"Token de leitura da API do TMDB", "Servidor preferido (vazio para nenhum)", "Endereço do complemento de vídeo", "Endereço do complemento de legendas"};
+    const char* titles[] = {"Token de leitura da API do TMDB", "Servidor preferido (vazio para nenhum)", "Endereço do add-on de vídeo", "Endereço do complemento de legendas"};
     auto prefs = stream_preferences::get();
     std::string initial = field == 0 ? "" : field == 1 ? prefs.preferredServer : field == 2 ? stremio::STREAM_ADDON : stremio::SUBTITLES_ADDON;
     ASYNC_RETAIN

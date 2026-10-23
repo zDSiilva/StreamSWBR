@@ -88,6 +88,13 @@ int main() {
     assert(malformed.entries.size()==1 && malformed.active.empty());
     using namespace stream_options;
     assert(preferred("FenixFlix 1080p · MALFOY", "Malfoy"));
+    assert(before("Malfoy 720p","FenixHub 2160p",""));
+    assert(before("Phoenix Hub 720p","Fonte qualquer 2160p",""));
+    assert(before("FenixHub 1080p","FenixHub 720p",""));
+    assert(before("Hollymovies 720p","Fonte qualquer 1080p",""));
+    assert(!before("Fonte qualquer 1080p","Hollymovies 720p",""));
+    assert(!before("FenixHub 1080p","FenixHub 1080p",""));
+    assert(before("Zunder 720p","Malfoy 1080p","Zunder"));
     assert(!preferred("FenixHub", ""));
     assert(!preferred("Zunder", "Malfoy"));
     assert(lower("AÇÃO E COMÉDIA") == "acao e comedia");
@@ -102,6 +109,10 @@ int main() {
     const auto directory = std::filesystem::temp_directory_path() /
         ("streamfin-pt-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(directory);
+    { std::ofstream out(directory/"preferences-pt.json"); out<<nlohmann::json{{"preferredServer","Malfoy"},{"audio","por"},{"tmdbToken","fixture-token"}}; }
+    stream_preferences::load(directory.string());
+    assert(stream_preferences::get().preferredServer.empty());
+    assert(stream_preferences::get().audio=="por" && stream_preferences::get().tmdbToken=="fixture-token");
     watched::Store watchedFirst; watchedFirst.load(directory.string());
     assert(!watchedFirst.contains("tt123:1:1"));
     assert(watchedFirst.mark("tt123:1:1"));

@@ -148,7 +148,7 @@ public:
         const std::string raw = s.name + "\n" + s.title + "\n" + s.description;
         auto favorite = stream_preferences::get().preferredServer;
         bool preferred = stream_options::preferred(raw, favorite);
-        cell->name->setText(stream_options::server(raw, favorite) + (preferred ? "  ★ Recomendado" : ""));
+        cell->name->setText(stream_options::server(raw, favorite) + (preferred ? " · Preferida" : ""));
         cell->name->setTextColor(preferred ? nvgRGB(110,235,184) : stremio_theme::TEXT);
         cell->setBackgroundColor(preferred ? nvgRGB(20,65,58) : nvgRGBA(255,255,255,16));
         cell->detail->setText(stream_options::quality(raw) + "  ·  " + stream_options::audio(raw) +
@@ -262,10 +262,7 @@ void StreamPicker::refresh() {
     }
     auto preferred = stream_preferences::get().preferredServer;
     std::stable_sort(filtered.begin(), filtered.end(), [preferred](const stremio::Stream& a, const stremio::Stream& b) {
-        auto isPreferred = [&preferred](const stremio::Stream& s) {
-            return stream_options::preferred(s.name + "\n" + s.title + "\n" + s.description, preferred);
-        };
-        return isPreferred(a) && !isPreferred(b);
+        return stream_options::before(a.name+"\n"+a.title+"\n"+a.description,b.name+"\n"+b.title+"\n"+b.description,preferred);
     });
     this->filterLabel->setText(std::string(labels[filter]) + " · " + std::to_string(filtered.size()) +
         " opções · Y filtrar · X detalhes");
