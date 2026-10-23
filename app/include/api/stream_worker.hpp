@@ -56,5 +56,10 @@ inline Queue* activeDetails=nullptr;
 inline Queue& foreground() { static Queue worker; activeForeground=&worker; return worker; }
 inline Queue& prefetch() { static Queue worker; activePrefetch=&worker; return worker; }
 inline Queue& details() { static Queue worker; activeDetails=&worker; return worker; }
-inline void shutdown() { if (activeForeground) activeForeground->stop(); if (activePrefetch) activePrefetch->stop(); if (activeDetails) activeDetails->stop(); }
+inline Queue* activeSearch[3]={nullptr,nullptr,nullptr};
+inline Queue& search(size_t index) {
+    static Queue workers[3]; const auto i=index%3; activeSearch[i]=&workers[i]; return workers[i];
+}
+inline void cancelSearch() { for (auto* worker:activeSearch) if (worker) worker->cancelPending(); }
+inline void shutdown() { for (auto* worker:activeSearch) if (worker) worker->stop(); if (activeForeground) activeForeground->stop(); if (activePrefetch) activePrefetch->stop(); if (activeDetails) activeDetails->stop(); }
 }

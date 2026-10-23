@@ -65,7 +65,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
     auto prefs = stream_preferences::get();
     const std::string values[] = {prefs.tmdbToken.empty() ? "Ativado · sem conta ou token · dados via TMDB Addon / ElfHosted" : "Credencial pessoal configurada · A para usar o modo automático",
         prefs.preferredServer.empty() ? "Automático · prioriza Malfoy e FenixHub, quando disponíveis" : prefs.preferredServer+" · Quando disponível; idioma em Áudio preferido",
-        stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Add-on ativo · A para gerenciar endereços salvos",
+        stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : std::to_string(stremio::VIDEO_ADDONS.enabledEntries().size())+" add-ons ativados · A para gerenciar",
         stremio::SUBTITLES_ADDON.empty() ? "Opcional · configurar endereço" : "Endereço configurado · A para editar"};
     for (int field = 0; field < 4; ++field) {
         brls::Label* label = nullptr;
@@ -74,7 +74,7 @@ StremioSettings::StremioSettings(std::function<void()> onRowsChanged) {
         row->registerClickAction([this, field, label](brls::View*) {
             if (field == 0) tmdbHelp(label);
             else if (field == 2) brls::Application::pushActivity(new brls::Activity(new StremioAddons([label]() {
-                label->setText(stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : "Add-on ativo · A para gerenciar endereços salvos");
+                label->setText(stremio::STREAM_ADDON.empty() ? "Nenhum ativo · adicionar ou selecionar endereços" : std::to_string(stremio::VIDEO_ADDONS.enabledEntries().size())+" add-ons ativados · A para gerenciar");
             })));
             else edit(field, label); return true;
         });

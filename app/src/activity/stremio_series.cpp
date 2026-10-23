@@ -97,17 +97,21 @@ public:
     EpisodeCell() { this->inflateFromXMLRes("xml/view/episode_card.xml"); }
     std::string episodeId;
     void draw(NVGcontext* vg,float x,float y,float w,float h,brls::Style style,brls::FrameContext* ctx) override {
+        const bool done=watched::store().contains(episodeId);
+        const std::string status=done ? "Assistido" : "";
+        if (labelWatched->getFullText()!=status) labelWatched->setText(status);
         BaseCardCell::draw(vg,x,y,w,h,style,ctx);
-        if (!watched::store().contains(episodeId)) return;
-        // Draw the check directly; it never depends on a font glyph or title width.
+        if (!done) return;
+        const auto box=labelWatched->getFrame();
         nvgSave(vg); nvgIntersectScissor(vg,x,y,w,h);
-        nvgBeginPath(vg); nvgCircle(vg,x+213,y+25,12); nvgFillColor(vg,nvgRGBA(19,85,60,245)); nvgFill(vg);
-        nvgBeginPath(vg); nvgMoveTo(vg,x+207,y+25); nvgLineTo(vg,x+211,y+29); nvgLineTo(vg,x+219,y+20);
-        nvgStrokeWidth(vg,2); nvgStrokeColor(vg,nvgRGB(160,245,201)); nvgStroke(vg); nvgRestore(vg);
+        nvgBeginPath(vg); nvgMoveTo(vg,box.getMinX()-20,box.getMinY()+12);
+        nvgLineTo(vg,box.getMinX()-15,box.getMinY()+17); nvgLineTo(vg,box.getMinX()-6,box.getMinY()+6);
+        nvgStrokeWidth(vg,2); nvgStrokeColor(vg,nvgRGB(142,230,189)); nvgStroke(vg); nvgRestore(vg);
     }
 
     BRLS_BIND(brls::Label, labelName, "episode/card/name");
     BRLS_BIND(brls::Label, labelOverview, "episode/card/overview");
+    BRLS_BIND(brls::Label, labelWatched, "episode/card/watched");
 };
 
 class EpisodeSource : public RecyclingGridDataSource {
@@ -143,25 +147,11 @@ public:
 
     void onItemSelected(brls::Box* recycler, size_t index) override {
         auto v = this->list.at(index);
-        if (stremio::STREAM_ADDON.empty()) {
-            brls::Application::notify("Configure o complemento primeiro (pressione − na tela inicial)");
-            return;
-        }
-        brls::Application::notify("Buscando vídeos…");
         stremio_playback::interruptResume();
-
-        // Player OSD / resume label: include the series name so it reads
-        // "Series · S1E5 · Episode name" instead of just the episode.
-        std::string label = this->seriesName.empty()
-            ? fmt::format("S{}E{} · {}", v.season, v.episode, v.name)
-            : fmt::format("{} · S{}E{} · {}", this->seriesName, v.season, v.episode, v.name);
-        std::string vid = v.id, thumb = v.thumbnail;
-        stremio::fetchStreams("series", vid,
-            [label, vid, thumb](stremio::StreamList r, std::string usedType) {
-                ResumeEntry key{usedType, vid, label, thumb};
-                brls::Application::pushActivity(new brls::Activity(new StreamPicker(label, r.streams, key)));
-            },
-            [label,vid,thumb](const std::string& e) { brls::Application::notify("Erro ao buscar vídeos: " + e); ResumeEntry key{"series",vid,label,thumb}; brls::Application::pushActivity(new brls::Activity(new StreamPicker(label,{},key))); });
+        std::string label=this->seriesName.empty() ? fmt::format("S{}E{} · {}",v.season,v.episode,v.name)
+            : fmt::format("{} · S{}E{} · {}",this->seriesName,v.season,v.episode,v.name);
+        ResumeEntry key{"series",v.id,label,v.thumbnail};
+        brls::Application::pushActivity(new brls::Activity(new StreamPicker(label,{},key)));
     }
 
     void clearData() override { this->list.clear(); }

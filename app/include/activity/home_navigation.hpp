@@ -21,6 +21,7 @@ inline void install() {
         ResumeTracker::instance().checkpoint();
         if (stream_worker::activeForeground) stream_worker::activeForeground->cancelPending();
         if (stream_worker::activePrefetch) stream_worker::activePrefetch->cancelPending();
+        stream_worker::cancelSearch();
         stremio_playback::cancel();
         moving=true;
         brls::sync([](){step();});

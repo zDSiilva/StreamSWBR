@@ -62,8 +62,15 @@
             id="episode/card/overview"
             grow="1"
             fontSize="17"
-            maxRows="4"
+            maxRows="3"
             textColor="@theme/font/grey" />
+        <brls:Label
+            id="episode/card/watched"
+            height="24"
+            shrink="0"
+            marginLeft="24"
+            fontSize="16"
+            textColor="#8ee6bd" />
     </brls:Box>
 
 </brls:Box>

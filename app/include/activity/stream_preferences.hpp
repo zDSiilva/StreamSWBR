@@ -27,9 +27,9 @@ inline void load(const std::string& dir) {
         values.preferredServer = j.value("preferredServer", "");
         values.audio = j.value("audio", "por,pt,pt-BR,eng,en");
         values.subtitles = j.value("subtitles", "por,pt,pt-BR");
-        if (j.value("sourceOrderVersion",0)<1) {
+        if (j.value("sourceOrderVersion",0)<2) {
             values.preferredServer.clear();
-            j["preferredServer"]=""; j["sourceOrderVersion"]=1;
+            j["preferredServer"]=""; j["sourceOrderVersion"]=2;
             std::ofstream out(dir+"/preferences-pt.json"); if (out) out<<j.dump(2);
         }
     } catch (...) { /* Keep defaults if the configuration is invalid. */ }
@@ -39,7 +39,7 @@ inline bool save(const Values& next) {
     const std::string path = directory + "/preferences-pt.json";
     std::ofstream out(path, std::ios::trunc);
     if (!out) return false;
-    out << nlohmann::json{{"sourceOrderVersion",1},{"tmdbToken", next.tmdbToken}, {"preferredServer", next.preferredServer},
+    out << nlohmann::json{{"sourceOrderVersion",2},{"tmdbToken", next.tmdbToken}, {"preferredServer", next.preferredServer},
         {"audio", next.audio}, {"subtitles", next.subtitles}}.dump(2);
     out.close();
     if (out.fail()) return false;

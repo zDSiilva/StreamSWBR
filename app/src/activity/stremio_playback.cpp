@@ -25,6 +25,7 @@ bool resuming=false;
 stream_worker::Cancel resumeCancel;
 std::string raw(const stremio::Stream& s) { return s.name+"\n"+s.title+"\n"+s.description; }
 void identify(ResumeEntry& key,const stremio::Stream& stream) {
+    if (!stream.sourceType.empty()) key.streamType=stream.sourceType;
     auto text=raw(stream);
     key.sourceProvider=stream_options::server(text,"");
     key.sourceHost=addon_profiles::host(stream.url);
@@ -138,7 +139,12 @@ void interruptResume() {
 }
 void resume(const ResumeEntry& key) {
     if (resumeCancel) resumeCancel->store(true);
+    resuming=false; ++generation;
     if (key.sourceAddon.empty() && stremio::STREAM_ADDON.empty()) { brls::Application::notify("Selecione um complemento em Configurações."); return; }
+    if (!key.sourceAddon.empty() && !stremio::VIDEO_ADDONS.enabled(key.sourceAddon)) {
+        brls::Application::notify("O add-on usado anteriormente está desativado. Escolha outra fonte.");
+        brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key))); return;
+    }
     resuming=true; auto ticket=++generation;
     brls::Application::notify("Retomando reprodução…");
     resumeCancel=stremio::fetchStreams(key.streamType,key.streamId,[ticket,key](stremio::StreamList result,std::string type) mutable {

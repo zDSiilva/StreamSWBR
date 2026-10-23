@@ -11,7 +11,7 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     auto* title=new brls::Label(); title->setText("Add-ons de vídeo");
     title->setFontSize(30); title->setHeight(44); title->setShrink(0); title->setTextColor(stremio_theme::TEXT); addView(title);
     auto* intro=new brls::Label();
-    intro->setText("Salve seus endereços e escolha qual usar. Apenas o add-on ativo busca vídeos.");
+    intro->setText("Ative um ou mais add-ons. Os vídeos aparecem separados por serviço na seleção.");
     intro->setFontSize(18); intro->setHeight(32); intro->setShrink(0); intro->setTextColor(stremio_theme::TEXT_DIM); addView(intro);
     addButton=new brls::Button(); addButton->setText("+ Adicionar add-on"); addButton->setShrink(0);
     addButton->setMarginTop(16); addButton->setMarginBottom(18); addButton->setBackgroundColor(nvgRGB(51,101,148));
@@ -21,11 +21,11 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     scroll->setContentView(list); addView(scroll);
     auto* later=new brls::Button(); later->setText(stremio::STREAM_ADDON.empty() ? "Voltar sem configurar" : "Concluir e voltar"); later->setShrink(0);
     closeButton=later;
-    later->setMarginTop(12);
+    later->setMarginTop(12); later->setTextColor(nvgRGB(235,255,248)); later->setBackgroundColor(nvgRGB(27,112,91));
     later->registerClickAction([onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     }); addView(later);
-    stremio_theme::controls(this, {{"A","Selecionar add-on"},{"B","Voltar"}});
+    stremio_theme::controls(this, {{"A","Gerenciar add-on"},{"B","Voltar"}});
     registerAction("hints/back"_i18n,brls::BUTTON_B,[onClose](brls::View*) {
         brls::Application::popActivity(); if (onClose) onClose(); return true;
     });
@@ -34,7 +34,7 @@ StremioAddons::StremioAddons(std::function<void()> onClose) {
     brls::sync([ASYNC_TOKEN]() { ASYNC_RELEASE brls::Application::giveFocus(addButton); });
 }
 void StremioAddons::rebuild() {
-    closeButton->setText(stremio::STREAM_ADDON.empty() ? "Configurar depois" : "Concluir e voltar");
+    closeButton->setText(stremio::STREAM_ADDON.empty() ? "Voltar" : "Concluir e voltar");
     list->clearViews(true);
     addButton->setText(stremio::VIDEO_ADDONS.entries.empty() ? "Adicionar outro endereço" : "+ Adicionar add-on");
     if (stremio::VIDEO_ADDONS.entries.empty()) {
@@ -45,16 +45,16 @@ void StremioAddons::rebuild() {
             if (next.add("FenixFlix","https://fenixflix.fenixhub.online/manifest/json",true)) commit(next);
             return true;
         }); list->addView(useFenix);
-        auto* empty=new brls::Label(); empty->setText("Escolha FenixFlix para configurar com um clique ou adicione outro endereço.\nFenixFlix é um serviço de terceiros. Nenhum add-on é ativado sem sua escolha.");
+        auto* empty=new brls::Label(); empty->setText("Escolha FenixFlix para configurar com um clique ou adicione outro endereço.\nFenixFlix é um serviço de terceiros. Você pode ativar vários add-ons.");
         empty->setWidthPercentage(100); empty->setSingleLine(false); empty->setFontSize(20); empty->setLineHeight(1.35f);
         empty->setTextColor(stremio_theme::TEXT_DIM); list->addView(empty); return;
     }
     if (stremio::STREAM_ADDON.empty()) {
-        auto* note=new brls::Label(); note->setText("Nenhum add-on ativo. Selecione um endereço salvo para usar.");
+        auto* note=new brls::Label(); note->setText("Nenhum add-on ativado. Ative um ou adicione outro endereço.");
         note->setFontSize(18); note->setHeight(32); note->setShrink(0); note->setTextColor(stremio_theme::TEXT_DIM); list->addView(note);
     }
     for (const auto& entry:stremio::VIDEO_ADDONS.entries) {
-        bool active=entry.url==stremio::STREAM_ADDON;
+        bool active=entry.enabled;
         auto* card=new brls::Box(); card->setAxis(brls::Axis::COLUMN); card->setFocusable(true);
         card->setShrink(0); card->setPadding(15,20,15,20); card->setMarginBottom(12); card->setCornerRadius(12);
         card->setBackgroundColor(active ? nvgRGB(28,79,74) : nvgRGB(28,40,62));
@@ -63,7 +63,7 @@ void StremioAddons::rebuild() {
         auto* name=new brls::Label(); name->setText((active ? "ATIVO · " : "")+entry.name);
         name->setFontSize(22); name->setHeight(32); name->setShrink(1);
         name->setSingleLine(true); name->setAutoAnimate(false); name->setTextColor(active ? nvgRGB(120,235,200) : stremio_theme::TEXT); name->setGrow(1); status->addView(name); card->addView(status);
-        auto* detail=new brls::Label(); detail->setText(addon_profiles::host(entry.url)+" · A para selecionar ou editar");
+        auto* detail=new brls::Label(); detail->setText(addon_profiles::host(entry.url)+" · A para ativar, desativar ou editar");
         detail->setFontSize(16); detail->setHeight(26); detail->setShrink(0); detail->setWidthPercentage(100);
         detail->setTextColor(stremio_theme::TEXT_DIM); card->addView(detail);
         card->registerClickAction([this,entry](brls::View*) { actions(entry); return true; });
@@ -84,7 +84,7 @@ void StremioAddons::commit(const addon_profiles::State& next) {
 }
 void StremioAddons::actions(addon_profiles::Entry entry) {
     auto* dialog=new brls::Dialog(entry.name+"\n"+addon_profiles::host(entry.url));
-    dialog->addButton("Usar este",[this,entry]() { auto next=stremio::VIDEO_ADDONS; if (next.select(entry.url)) commit(next); });
+    dialog->addButton(entry.enabled ? "Desativar" : "Ativar",[this,entry]() { auto next=stremio::VIDEO_ADDONS; if (next.toggle(entry.url)) commit(next); });
     dialog->addButton("Editar",[this,entry]() {
         auto* edit=new brls::Dialog("Editar "+entry.name);
         edit->addButton("Renomear",[this,entry]() { askName(entry,entry.url); });

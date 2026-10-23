@@ -139,8 +139,7 @@ inline std::string addonConfigPath(const std::string& configDir) { return config
 inline bool saveConfig(const std::string& configDir) {
     ::mkdir(configDir.c_str(), 0777);
     try {
-        if (!STREAM_ADDON.empty()) VIDEO_ADDONS.add("",STREAM_ADDON,true);
-        else VIDEO_ADDONS.active.clear();
+        VIDEO_ADDONS.reconcile(); STREAM_ADDON=VIDEO_ADDONS.active;
         auto data=VIDEO_ADDONS.json(); data["poster"]=POSTER_TEMPLATE; data["subtitles"]=SUBTITLES_ADDON;
         std::ofstream out(addonConfigPath(configDir));
         if (!out) return false;
@@ -328,6 +327,7 @@ struct Stream {
     std::string description;  // detailed label (newer addons, incl. AIOStreams)
     std::string url;          // <-- the playable (debrid) URL we hand to MPV
     std::string sourceAddon;  // Runtime provenance, never a cached playback URL
+    std::string sourceType;
 };
 inline void from_json(const nlohmann::json& j, Stream& s) {
     s.name = jstr(j, "name");
@@ -628,13 +628,13 @@ inline stream_worker::Cancel playbackMeta(std::function<void(Result)> then,OnErr
     });
 }
 inline stream_worker::Cancel fetchStreams(const std::string& type, const std::string& id,
-    std::function<void(StreamList, std::string)> then, OnError error, bool background=false, const std::string& origin="") {
+    std::function<void(StreamList, std::string)> then, OnError error, bool background=false, const std::string& origin="", stream_worker::Queue* queue=nullptr) {
     std::vector<std::string> types{type};
     if (id.rfind("kitsu:", 0) == 0)
         for (const char* t : {"series", "anime", "movie"})
             if (t != type) types.push_back(t);
     const auto addonBase = origin.empty() ? STREAM_ADDON : origin;
-    auto& worker=background ? stream_worker::prefetch() : stream_worker::foreground();
+    auto& worker=queue ? *queue : (background ? stream_worker::prefetch() : stream_worker::foreground());
     return worker.submit([types,then,error,id,addonBase](stream_worker::Cancel cancel) {
         std::string last="request failed";
         const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(14);
@@ -647,7 +647,7 @@ inline stream_worker::Cancel fetchStreams(const std::string& type, const std::st
                     const auto url=addonBase+"/stream/"+t+"/"+id+".json";
                     auto body=HTTP::get(url,HTTP::Timeout{long(std::min<int64_t>(6000,remaining))},cancel,HTTP::FreshDNS{});
                     auto result=nlohmann::json::parse(body).get<StreamList>();
-                    for (auto& stream : result.streams) stream.sourceAddon=addonBase;
+                    for (auto& stream : result.streams) { stream.sourceAddon=addonBase; stream.sourceType=t; }
                     if (!result.streams.empty() || t==types.back()) {
                         brls::sync([then,result,t,cancel]() { if (!cancel->load()) then(result,t); }); return;
                     }

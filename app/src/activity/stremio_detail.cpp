@@ -375,29 +375,7 @@ void StremioDetail::onAction() {
 }
 
 void StremioDetail::openStreams() {
-    if (this->fetching) return;  // ignore repeat presses while a request runs
     stremio_playback::interruptResume();
-    if (stremio::STREAM_ADDON.empty()) {
-        brls::Application::notify("Configure o complemento primeiro (pressione − na tela inicial)");
-        return;
-    }
-    this->fetching = true;
-    brls::Application::notify("Buscando vídeos…");
-
-    std::string name = this->item.name;
-    ASYNC_RETAIN
-    stremio::fetchStreams(this->item.type, this->item.id,
-        [ASYNC_TOKEN, name](stremio::StreamList r, std::string usedType) {
-            ASYNC_RELEASE
-            this->fetching = false;
-            ResumeEntry key{usedType, this->item.id, this->item.name, this->item.poster};
-            brls::Application::pushActivity(new brls::Activity(new StreamPicker(name, r.streams, key)));
-        },
-        [ASYNC_TOKEN](const std::string& e) {
-            ASYNC_RELEASE
-            this->fetching = false;
-            brls::Application::notify("Erro ao buscar vídeos: " + e);
-            ResumeEntry key{this->item.type,this->item.id,this->item.name,this->item.poster};
-            brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key)));
-        });
+    ResumeEntry key{this->item.type,this->item.id,this->item.name,this->item.poster};
+    brls::Application::pushActivity(new brls::Activity(new StreamPicker(key.name,{},key)));
 }

@@ -100,5 +100,30 @@ int main() {
     },[&](auto){explicitOrigin.set_value(false);},false,"https://froststream.cloutteam.com");
     assert(explicitDone.wait_for(2s)==std::future_status::ready && explicitDone.get());
     assert(stremio::STREAM_ADDON==configured);
+    // A slow add-on must not hold up another group's results.
+    std::promise<bool> slowStarted,releaseSlow,fastDone,slowDone;
+    auto slowRunning=slowStarted.get_future(); auto release=releaseSlow.get_future().share();
+    auto fastResult=fastDone.get_future(); auto slowResult=slowDone.get_future();
+    HTTP::transport=[&](const std::string& url,auto cancel) {
+        if (url.find("slow.example")!=std::string::npos) {
+            slowStarted.set_value(true); release.wait();
+            throw std::runtime_error("offline");
+        }
+        assert(url=="https://fast.example/stream/series/tt0898266:1:3.json");
+        return std::string(R"({"streams":[{"name":"Neon","url":"https://video.example/play"}]})");
+    };
+    auto slow=stremio::fetchStreams("series","tt0898266:1:3",[&](auto,auto){slowDone.set_value(false);},
+        [&](auto){slowDone.set_value(true);},false,"https://slow.example",&stream_worker::search(0));
+    assert(slowRunning.wait_for(2s)==std::future_status::ready);
+    stremio::fetchStreams("series","tt0898266:1:3",[&](auto result,auto) {
+        fastDone.set_value(result.streams.size()==1 && result.streams[0].sourceAddon=="https://fast.example");
+    },[&](auto){fastDone.set_value(false);},false,"https://fast.example",&stream_worker::search(1));
+    assert(fastResult.wait_for(2s)==std::future_status::ready && fastResult.get());
+    slow->store(true); releaseSlow.set_value(true);
+    std::promise<bool> searchDrained; auto searchDone=searchDrained.get_future();
+    stream_worker::search(0).submit([&](auto){searchDrained.set_value(true);});
+    assert(searchDone.wait_for(2s)==std::future_status::ready);
+    assert(slowResult.wait_for(10ms)==std::future_status::timeout);
+    assert(stremio::STREAM_ADDON==configured);
     std::cout<<"OK: cold startup bypasses metadata, DNS retry, cancellation and prefetch isolation\n";
 }

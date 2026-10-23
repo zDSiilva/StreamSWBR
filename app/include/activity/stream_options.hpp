@@ -43,7 +43,7 @@ inline std::string quality(const std::string& raw) {
 }
 inline std::string server(const std::string& raw, const std::string& favorite) {
     if (preferred(raw, favorite)) return favorite;
-    for (const char* known : {"Malfoy", "Zunder", "FenixHub"})
+    for (const char* known : {"Malfoy", "Zunder", "FenixHub", "MegaEmbed", "Neon", "Carbon", "Azure"})
         if (preferred(raw, known)) return known;
     auto compact=lower(raw);
     compact.erase(std::remove_if(compact.begin(),compact.end(),[](unsigned char c){return std::isspace(c) || c=='-';}),compact.end());
